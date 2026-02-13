@@ -910,6 +910,10 @@ body {
   gap: var(--space-sm);
 }
 
+.screener-toolbar-actions .btn {
+  white-space: nowrap;
+}
+
 .screener-preset-select {
   width: 220px;
   height: 40px;
@@ -939,6 +943,10 @@ body {
   justify-content: flex-end;
 }
 
+.news-search-form > * {
+  flex: 0 0 auto;
+}
+
 .news-search-input {
   height: 40px !important;
   width: min(620px, 100%);
@@ -947,6 +955,7 @@ body {
   margin: 0;
   padding: 0 12px !important;
   line-height: 1.2;
+  flex: 1 1 auto !important;
 }
 
 .news-search-btn {
@@ -964,12 +973,29 @@ body {
 
 .sidebar-new-action {
   width: 100%;
+  justify-content: center;
+  margin-bottom: var(--space-sm);
 }
 
 .sidebar-inline-form {
   display: grid;
   gap: var(--space-sm);
   margin-top: var(--space-sm);
+}
+
+.sidebar-inline-create-btn {
+  width: auto !important;
+  justify-self: start;
+}
+
+.sidebar-action-btn {
+  width: 100%;
+  justify-content: center;
+  margin-bottom: var(--space-xs);
+}
+
+.sidebar-action-btn + .sidebar-item {
+  margin-top: var(--space-xs);
 }
 
 .sp-table-total-cell {
@@ -1003,6 +1029,18 @@ body {
   align-items: flex-end;
   gap: var(--space-sm);
   margin-bottom: var(--space-md);
+}
+
+.watchlist-add-input {
+  flex: 1 1 auto;
+}
+
+.watchlist-add-btn {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 110px;
+  height: 40px;
+  white-space: nowrap;
 }
 
 .watchlist-notes {
@@ -1090,6 +1128,15 @@ body {
   .news-search-input {
     min-width: 0;
     flex: 1 1 auto;
+  }
+
+  .watchlist-add-form {
+    align-items: stretch;
+  }
+
+  .watchlist-add-btn {
+    width: 100% !important;
+    min-width: 0;
   }
 }
 

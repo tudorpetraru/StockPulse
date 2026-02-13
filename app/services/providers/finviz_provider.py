@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import date
+import re
 from typing import Any
 
 from finvizfinance.quote import finvizfinance
@@ -44,13 +45,17 @@ class FinvizProvider(BaseProvider):
         rows = ratings.to_dict(orient="records") if hasattr(ratings, "to_dict") else list(ratings)
         normalized: list[dict[str, Any]] = []
         for row in rows:
+            # Finviz "outer ratings" currently uses columns:
+            # Date, Status, Outer, Rating, Price (e.g. "$325 → $340")
+            # Keep compatibility with older labels too.
+            raw_price = row.get("Price Target") or row.get("Price_Target") or row.get("Price")
             normalized.append(
                 {
                     "date": row.get("Date"),
-                    "firm": row.get("Analyst") or row.get("Firm") or "Unknown",
-                    "action": row.get("Action"),
+                    "firm": row.get("Outer") or row.get("Analyst") or row.get("Firm") or "Unknown",
+                    "action": row.get("Status") or row.get("Action"),
                     "rating": row.get("Rating") or row.get("To Grade") or "N/A",
-                    "price_target": row.get("Price Target") or row.get("Price_Target"),
+                    "price_target": _extract_latest_price_target(raw_price),
                 }
             )
         return normalized
@@ -119,3 +124,18 @@ class FinvizProvider(BaseProvider):
             "consensus": None,
             "current": current,
         }
+
+
+def _extract_latest_price_target(value: Any) -> float | None:
+    if value in (None, ""):
+        return None
+    text = str(value).strip()
+    if not text or text in {"-", "N/A"}:
+        return None
+    numbers = re.findall(r"([0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?)", text.replace("$", ""))
+    if not numbers:
+        return None
+    try:
+        return float(numbers[-1].replace(",", ""))
+    except ValueError:
+        return None

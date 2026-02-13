@@ -194,12 +194,20 @@ async def hx_earnings(
 @router.get("/hx/ticker/{symbol}/predictions", response_class=HTMLResponse)
 async def hx_predictions(
     request: Request, symbol: str,
+    ds: DataService = Depends(get_data_service),
     ps: PredictionService = Depends(get_prediction_service),
 ):
     symbol = symbol.upper()
     templates = _templates()
     try:
         summary = await ps.get_prediction_summary(symbol)
+        # Keep "Current Consensus Target" aligned with the live analyst panel
+        # shown on ticker overview to avoid mixed-source discrepancies.
+        analysts = await ds.get_analyst_ratings(symbol)
+        live_avg = analysts.get("avg") if isinstance(analysts, dict) else None
+        if live_avg and str(live_avg) != "N/A":
+            live_avg_text = str(live_avg)
+            summary["consensus_target"] = live_avg_text if live_avg_text.startswith("$") else f"${live_avg_text}"
         scorecard = await ps.get_analyst_scorecard(symbol)
         history = await ps.get_prediction_history(symbol)
         status = "ok"

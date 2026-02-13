@@ -14,17 +14,17 @@
     {% endfor %}
     <div class="sidebar-divider"></div>
     <div x-data="{ open: false }">
-      <button type="button" class="sidebar-item sidebar-new-action" @click="open = !open">+ New Portfolio</button>
+      <button type="button" class="btn btn-primary sidebar-new-action" @click="open = !open">+ New Portfolio</button>
       <form x-show="open" action="/api/portfolios" method="post" class="sidebar-inline-form">
         <input type="hidden" name="csrf_token" value="">
         <label class="visually-hidden" for="new-portfolio-name">Portfolio Name</label>
         <input id="new-portfolio-name" class="sp-input" name="name" placeholder="Portfolio name" required>
-        <button type="submit" class="btn btn-primary btn-sm">Create</button>
+        <button type="submit" class="btn btn-primary sidebar-inline-create-btn">Create</button>
       </form>
     </div>
     <div class="sidebar-divider"></div>
     <div class="sidebar-title">Actions</div>
-    <button type="button" class="sidebar-item" onclick="openModal('add-position-modal')">+ Add Position</button>
+    <button type="button" class="btn btn-primary sidebar-action-btn" onclick="openModal('add-position-modal')">+ Add Position</button>
     <a class="sidebar-item"
        data-action="refresh"
        href="/portfolio?portfolio_id={{ active_portfolio.id }}&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}&refresh=1">Refresh Prices</a>

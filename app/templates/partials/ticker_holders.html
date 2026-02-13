@@ -12,7 +12,8 @@
             <tr>
                 <th>Holder</th>
                 <th>Shares</th>
-                <th>% Out</th>
+                <th>% In</th>
+                <th>% of Listed Holdings</th>
                 <th>Value</th>
                 <th>Date</th>
             </tr>
@@ -21,9 +22,10 @@
             {% for h in rows %}
             <tr>
                 <td style="font-weight:500;">{{ h.name }}</td>
-                <td>{{ "{:,.0f}".format(h.shares) if h.shares else "N/A" }}</td>
-                <td>{{ "%.2f"|format(h.pct_out) if h.pct_out else "N/A" }}%</td>
-                <td>{{ "${:,.0f}".format(h.value) if h.value else "N/A" }}</td>
+                <td>{{ "{:,.0f}".format(h.shares) if h.shares is not none else "N/A" }}</td>
+                <td>{{ "%.2f"|format(h.pct_in) if h.pct_in is not none else "N/A" }}{% if h.pct_in is not none %}%{% endif %}</td>
+                <td>{{ "%.2f"|format(h.pct_total) if h.pct_total is not none else "N/A" }}{% if h.pct_total is not none %}%{% endif %}</td>
+                <td>{{ "${:,.0f}".format(h.value) if h.value is not none else "N/A" }}</td>
                 <td>{{ h.date }}</td>
             </tr>
             {% endfor %}

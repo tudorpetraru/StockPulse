@@ -289,7 +289,13 @@ def _holders_df_to_records(df: pd.DataFrame | None) -> list[dict[str, Any]]:
             {
                 "name": row.get("Holder") or row.get("holder") or row.get("Name"),
                 "shares": _to_float(row.get("Shares") or row.get("shares")),
-                "pct_out": _to_float(row.get("% Out") or row.get("pctHeld") or row.get("Pct Out")),
+                "pct_out": _to_float(row.get("% Out") or row.get("Pct Out") or row.get("pct_out")),
+                "pct_in": _to_float(
+                    row.get("% In")
+                    or row.get("% Held")
+                    or row.get("pctHeld")
+                    or row.get("pct_in")
+                ),
                 "value": _to_float(row.get("Value") or row.get("value")),
                 "date": _format_date(row.get("Date Reported") or row.get("Date") or row.get("date")),
             }

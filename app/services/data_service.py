@@ -82,7 +82,7 @@ class DataService:
 
         profile_key = self.cache.build_key("profile", upper_symbol)
         metrics_key = self.cache.build_key("metrics", upper_symbol)
-        analyst_key = self.cache.build_key("analyst", upper_symbol)
+        analyst_key = self.cache.build_key("analyst", upper_symbol, schema="v2")
         insiders_key = self.cache.build_key("insiders", upper_symbol)
         news_key = self.cache.build_key("news", upper_symbol)
 
@@ -220,7 +220,7 @@ class DataService:
     async def get_analyst_ratings(self, symbol: str) -> dict[str, Any]:
         upper_symbol = symbol.upper()
         panel = await self._panel(
-            cache_key=self.cache.build_key("analyst", upper_symbol),
+            cache_key=self.cache.build_key("analyst", upper_symbol, schema="v2"),
             cache_category="analyst",
             primary=lambda: self.finviz.get_analyst_ratings(upper_symbol),
             fallback=lambda: self.yfinance.get_analyst_ratings(upper_symbol),
@@ -243,7 +243,7 @@ class DataService:
 
             normalized.append(
                 {
-                    "date": _as_str(_first(row, "date", "Date")) or "N/A",
+                    "date": _display_column_label(_first(row, "date", "Date")),
                     "firm": _as_str(_first(row, "firm", "Firm", "Analyst")) or "Unknown",
                     "action": _as_str(_first(row, "action", "Action")) or "N/A",
                     "rating": rating,
@@ -252,12 +252,25 @@ class DataService:
             )
 
         consensus = max(rating_counts, key=rating_counts.get) if rating_counts else "N/A"
+        low_target = min(targets) if targets else None
+        avg_target = (sum(targets) / len(targets)) if targets else None
+        high_target = max(targets) if targets else None
+
+        if not targets:
+            try:
+                live_consensus = await self.yfinance.get_consensus_targets(upper_symbol)
+                low_target = _to_float(live_consensus.get("low"))
+                avg_target = _to_float(live_consensus.get("avg"))
+                high_target = _to_float(live_consensus.get("high"))
+            except SERVICE_RECOVERABLE_ERRORS as exc:
+                logger.debug("Live consensus fallback unavailable for %s: %s", upper_symbol, exc)
+
         return {
             "consensus": consensus,
             "count": len(normalized),
-            "low": f"{min(targets):.2f}" if targets else "N/A",
-            "avg": f"{(sum(targets) / len(targets)):.2f}" if targets else "N/A",
-            "high": f"{max(targets):.2f}" if targets else "N/A",
+            "low": f"{low_target:.2f}" if low_target is not None else "N/A",
+            "avg": f"{avg_target:.2f}" if avg_target is not None else "N/A",
+            "high": f"{high_target:.2f}" if high_target is not None else "N/A",
             "ratings": normalized,
         }
 
@@ -338,13 +351,15 @@ class DataService:
     async def get_holders(self, symbol: str) -> dict[str, Any]:
         upper_symbol = symbol.upper()
         panel = await self._panel(
-            cache_key=self.cache.build_key("holders", upper_symbol),
+            cache_key=self.cache.build_key("holders", upper_symbol, schema="v2"),
             cache_category="holders",
             primary=lambda: self.yfinance.get_holders(upper_symbol),
         )
         data = panel.data if isinstance(panel.data, dict) else {}
-        institutional = data.get("institutional", []) if isinstance(data.get("institutional"), list) else []
-        mutual_fund = data.get("mutual_fund", []) if isinstance(data.get("mutual_fund"), list) else []
+        institutional_rows = data.get("institutional", []) if isinstance(data.get("institutional"), list) else []
+        mutual_fund_rows = data.get("mutual_fund", []) if isinstance(data.get("mutual_fund"), list) else []
+        institutional = _normalize_holder_rows(institutional_rows)
+        mutual_fund = _normalize_holder_rows(mutual_fund_rows)
         return {"institutional": institutional, "mutual_fund": mutual_fund}
 
     async def get_earnings(self, symbol: str) -> dict[str, Any]:
@@ -744,6 +759,43 @@ def _normalize_peer_rows(rows: list[dict[str, Any]], target_symbol: str | None =
                 "ytd": ytd or 0.0,
             }
         )
+    return normalized
+
+
+def _to_percent_value(value: Any) -> float | None:
+    num = _to_float(value)
+    if num is None:
+        return None
+    return num * 100.0 if abs(num) <= 1 else num
+
+
+def _normalize_holder_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    for row in rows[:20]:
+        if not isinstance(row, dict):
+            continue
+        shares = _to_float(_first(row, "shares", "Shares"))
+        value = _to_float(_first(row, "value", "Value"))
+        normalized.append(
+            {
+                "name": _as_str(_first(row, "name", "Holder", "holder", "Name")) or "N/A",
+                "shares": shares,
+                "pct_in": _to_percent_value(_first(row, "pct_in", "% In", "% Held", "pctHeld")),
+                "pct_out": _to_percent_value(_first(row, "pct_out", "% Out", "Pct Out")),
+                "value": value,
+                "date": _display_column_label(_first(row, "date", "Date", "Date Reported")),
+            }
+        )
+
+    total_shares = sum((row.get("shares") or 0.0) for row in normalized)
+    total_value = sum((row.get("value") or 0.0) for row in normalized)
+    use_shares = total_shares > 0
+    denom = total_shares if use_shares else total_value
+
+    for row in normalized:
+        base = row.get("shares") if use_shares else row.get("value")
+        row["pct_total"] = (float(base) / denom * 100.0) if base is not None and denom > 0 else None
+
     return normalized
 
 

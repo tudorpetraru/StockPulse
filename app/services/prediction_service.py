@@ -554,6 +554,12 @@ class PredictionService:
             ) * 100
 
         latest_target = next((row.target_avg for row in consensus_rows if row.target_avg is not None), None)
+        if latest_target is None and self._yfinance_provider is not None:
+            try:
+                live_consensus = await self._yfinance_provider.get_consensus_targets(upper_symbol)
+                latest_target = _to_float(live_consensus.get("avg"))
+            except SERVICE_RECOVERABLE_ERRORS as exc:
+                logger.debug("Live consensus summary fallback unavailable for %s: %s", upper_symbol, exc)
         return {
             "active": active,
             "resolved": resolved,

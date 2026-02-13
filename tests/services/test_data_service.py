@@ -32,9 +32,18 @@ class _DummyCache:
 
 
 class _DummyProvider:
-    def __init__(self, *, news_rows: list[dict[str, Any]] | None = None, metrics: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        news_rows: list[dict[str, Any]] | None = None,
+        metrics: dict[str, Any] | None = None,
+        consensus_targets: dict[str, Any] | None = None,
+        holders: dict[str, Any] | None = None,
+    ) -> None:
         self.news_rows = news_rows or []
         self.metrics = metrics or {}
+        self.consensus_targets = consensus_targets or {}
+        self.holders = holders or {"institutional": [], "mutual_fund": []}
 
     async def get_news(self, symbol: str, limit: int = 20) -> list[dict[str, Any]]:
         _ = symbol
@@ -47,6 +56,14 @@ class _DummyProvider:
     async def get_insider_transactions(self, symbol: str) -> list[dict[str, Any]]:
         _ = symbol
         return []
+
+    async def get_consensus_targets(self, symbol: str) -> dict[str, Any]:
+        _ = symbol
+        return self.consensus_targets
+
+    async def get_holders(self, symbol: str) -> dict[str, Any]:
+        _ = symbol
+        return self.holders
 
 
 def test_get_news_maps_title_link_and_dict_source():
@@ -126,3 +143,54 @@ def test_get_insider_trades_maps_finviz_fields():
     assert rows[0]["title"] == "EVP & Chief Financial Officer"
     assert rows[0]["shares"] == 27640.0
     assert rows[0]["value"] == 4856861.0
+
+
+def test_get_analyst_ratings_falls_back_to_live_consensus_targets():
+    cache = _DummyCache()
+
+    class _AnalystProvider(_DummyProvider):
+        async def get_analyst_ratings(self, symbol: str) -> list[dict[str, Any]]:
+            _ = symbol
+            return [
+                {
+                    "date": "2026-02-10 00:00:00",
+                    "firm": "Bernstein",
+                    "action": "Reiterated",
+                    "rating": "Outperform",
+                    "price_target": None,
+                }
+            ]
+
+    finviz = _AnalystProvider()
+    yfinance = _DummyProvider(consensus_targets={"low": 205.0, "avg": 293.06952, "high": 350.0})
+    service = DataService(cache=cache, yfinance_provider=yfinance, finviz_provider=finviz)
+
+    ratings = asyncio.run(service.get_analyst_ratings("AAPL"))
+    assert ratings["low"] == "205.00"
+    assert ratings["avg"] == "293.07"
+    assert ratings["high"] == "350.00"
+    assert ratings["ratings"][0]["date"] == "2026-02-10"
+
+
+def test_get_holders_normalizes_pct_in_and_row_share_of_total():
+    cache = _DummyCache()
+    yfinance = _DummyProvider(
+        holders={
+            "institutional": [
+                {"name": "Fund A", "shares": 100.0, "pct_in": 0.25, "value": 1000.0, "date": "2025-12-31"},
+                {"name": "Fund B", "shares": 300.0, "pct_in": 0.75, "value": 3000.0, "date": "2025-12-31"},
+            ],
+            "mutual_fund": [],
+        }
+    )
+    finviz = _DummyProvider()
+    service = DataService(cache=cache, yfinance_provider=yfinance, finviz_provider=finviz)
+
+    holders = asyncio.run(service.get_holders("AAPL"))
+    first = holders["institutional"][0]
+    second = holders["institutional"][1]
+
+    assert first["pct_in"] == 25.0
+    assert second["pct_in"] == 75.0
+    assert first["pct_total"] == 25.0
+    assert second["pct_total"] == 75.0

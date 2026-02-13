@@ -23,7 +23,7 @@ Local-first stock research workstation built with FastAPI, server-rendered templ
   - analyst ratings
   - news
   - insider activity
-  - holders
+  - holders (`% In` and `% of listed holdings` views)
   - earnings
   - predictions tab and chart APIs
 - Portfolio management:

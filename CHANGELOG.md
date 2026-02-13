@@ -23,6 +23,7 @@ All notable changes to this project are documented in this file.
 - Updated portfolio/watchlist templates to use live quote fields, sortable headers, and last-refreshed metadata.
 - Added portfolio chart rendering in the portfolio screen using Plotly JSON endpoints.
 - Updated custom CSS with accessibility and UI-alignment class styles used by the revised templates.
+- Updated holders tables to show `% In` and `% of listed holdings` for each reported holder row.
 
 ### Fixed
 
@@ -35,6 +36,9 @@ All notable changes to this project are documented in this file.
 - Fixed NaN handling in numeric parsing paths to avoid `nan`/`$nan` rendering in earnings/metrics.
 - Fixed screener preset load mismatch (`id` string/number comparison).
 - Fixed invalid non-symbol ticker link rendering in generic news feed results.
+- Fixed Finviz analyst parsing for current columns (`Outer`, `Status`, `Price`) including price-target extraction from range strings.
+- Fixed prediction-tab consensus target mismatch by aligning displayed consensus with ticker overview analyst average.
+- Fixed holders percent scaling by treating provider `pctHeld` as ratio input and converting to percentage display.
 
 ### Tests
 
@@ -42,4 +46,5 @@ All notable changes to this project are documented in this file.
 - Added news normalization regressions for title/source mapping and invalid ticker link suppression.
 - Added portfolio/watchlist refresh regressions validating refresh-path quote updates.
 - Added data-service regressions for title/link/source normalization, near-zero clipping, market-cap formatting, and NaN handling.
-- Full suite passing: `95 passed` (`pytest -q`).
+- Added regressions for Finviz analyst-price parsing, prediction-summary consensus fallback, and holders percent normalization.
+- Full suite passing: `102 passed` (`pytest -q`).
