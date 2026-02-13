@@ -48,7 +48,10 @@ async def lifespan(app: FastAPI):
         yfinance_provider=yfinance_provider,
         finviz_provider=finviz_provider,
     )
-    prediction_service = PredictionService(snapshot_service=prediction_snapshot_service)
+    prediction_service = PredictionService(
+        snapshot_service=prediction_snapshot_service,
+        yfinance_provider=yfinance_provider,
+    )
     scheduler = SchedulerService(prediction_service=prediction_snapshot_service, yfinance_provider=yfinance_provider)
 
     app.state.cache = cache

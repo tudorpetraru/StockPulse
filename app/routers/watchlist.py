@@ -118,6 +118,34 @@ def delete_watchlist(watchlist_id: int, db: Session = Depends(get_db)):
     return {"ok": True}
 
 
+# ── Quick Add from Ticker page ──
+
+
+@router.post("/api/watchlist/add")
+def quick_add_watchlist(
+    symbol: str = Form(...),
+    watchlist_id: int | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    ticker_clean = symbol.upper().strip()
+    if not ticker_clean:
+        return {"ok": False, "error": "Missing symbol"}
+
+    watchlist = db.get(Watchlist, watchlist_id) if watchlist_id else None
+    if watchlist is None:
+        watchlist = _get_or_create_default_watchlist(db)
+
+    exists = (
+        db.query(WatchlistItem)
+        .filter(WatchlistItem.watchlist_id == watchlist.id, WatchlistItem.ticker == ticker_clean)
+        .first()
+    )
+    if not exists:
+        db.add(WatchlistItem(watchlist_id=watchlist.id, ticker=ticker_clean))
+        db.commit()
+    return {"ok": True, "watchlist_id": watchlist.id, "ticker": ticker_clean}
+
+
 # ── CRUD: Add Item ──
 
 

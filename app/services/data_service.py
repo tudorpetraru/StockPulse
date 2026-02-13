@@ -332,17 +332,27 @@ class DataService:
 
     async def get_holders(self, symbol: str) -> dict[str, Any]:
         upper_symbol = symbol.upper()
-        key = self.cache.build_key("holders", upper_symbol)
-        cached = self.cache.get(key)
-        if isinstance(cached, dict):
-            return cached
-        payload = {"institutional": [], "mutual_fund": []}
-        self.cache.set(key, payload, ttl_for("holders"))
-        return payload
+        panel = await self._panel(
+            cache_key=self.cache.build_key("holders", upper_symbol),
+            cache_category="holders",
+            primary=lambda: self.yfinance.get_holders(upper_symbol),
+        )
+        data = panel.data if isinstance(panel.data, dict) else {}
+        institutional = data.get("institutional", []) if isinstance(data.get("institutional"), list) else []
+        mutual_fund = data.get("mutual_fund", []) if isinstance(data.get("mutual_fund"), list) else []
+        return {"institutional": institutional, "mutual_fund": mutual_fund}
 
     async def get_earnings(self, symbol: str) -> dict[str, Any]:
-        _ = symbol
-        return {"history": [], "next_date": "N/A"}
+        upper_symbol = symbol.upper()
+        panel = await self._panel(
+            cache_key=self.cache.build_key("financials", upper_symbol, panel="earnings"),
+            cache_category="financials",
+            primary=lambda: self.yfinance.get_earnings(upper_symbol),
+        )
+        data = panel.data if isinstance(panel.data, dict) else {}
+        history = data.get("history", []) if isinstance(data.get("history"), list) else []
+        next_date = _as_str(data.get("next_date")).strip() or "N/A"
+        return {"history": history[:8], "next_date": next_date}
 
     async def get_price_history(self, symbol: str, period: str = "1y") -> list[dict[str, Any]]:
         upper_symbol = symbol.upper()
@@ -372,8 +382,55 @@ class DataService:
         return history
 
     async def get_peers(self, symbol: str) -> list[dict[str, Any]]:
-        _ = symbol
-        return []
+        upper_symbol = symbol.upper()
+        cache_key = self.cache.build_key("profile", upper_symbol, panel="peers")
+        cached = self.cache.get(cache_key)
+        if isinstance(cached, list):
+            return cached
+
+        profile = await self.get_profile(upper_symbol)
+        sector = _as_str(profile.get("sector")).strip()
+
+        def _run() -> list[dict[str, Any]]:
+            overview = Overview()
+            if sector and sector != "N/A":
+                try:
+                    overview.set_filter(filters_dict={"Sector": sector})
+                except Exception:  # noqa: BLE001
+                    logger.debug("Unable to filter peers by sector=%s", sector)
+
+            df = overview.screener_view(order="Market Cap.", limit=40, verbose=0, ascend=False, sleep_sec=0)
+            if df is None or getattr(df, "empty", True):
+                return []
+
+            peers: list[dict[str, Any]] = []
+            for row in df.to_dict(orient="records"):
+                peer_symbol = _as_str(row.get("Ticker")).upper()
+                if not peer_symbol or peer_symbol == upper_symbol:
+                    continue
+                ytd = _to_percent_float(_first(row, "Perf YTD", "Perf YTD%"))
+                peers.append(
+                    {
+                        "symbol": peer_symbol,
+                        "name": _as_str(row.get("Company")) or peer_symbol,
+                        "price": _to_float(row.get("Price")) or 0.0,
+                        "pe": _fmt_metric(_first(row, "P/E")),
+                        "mkt_cap": _as_str(row.get("Market Cap")) or "N/A",
+                        "ytd": ytd or 0.0,
+                    }
+                )
+                if len(peers) >= 8:
+                    break
+            return peers
+
+        try:
+            peers = await asyncio.to_thread(_run)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Peers lookup failed for %s: %s", upper_symbol, exc)
+            peers = []
+
+        self.cache.set(cache_key, peers, ttl_for("profile"))
+        return peers
 
     async def screen_stocks(self, filters: dict[str, Any], limit: int = 300) -> list[dict[str, Any]]:
         """Run a screener query via finviz overview with best-effort filter mapping."""

@@ -19,8 +19,7 @@
                 hx-post="/api/watchlist/add"
                 hx-vals='{"symbol":"{{ symbol }}"}'
                 hx-swap="none">+ Add to Watchlist</button>
-        <button class="btn btn-sm"
-                onclick="document.getElementById('add-position-modal').showModal()">Add Position</button>
+        <a class="btn btn-sm" href="/portfolio">Add Position</a>
         <button class="btn btn-sm"
                 hx-get="/ticker/{{ symbol }}"
                 hx-target="body"

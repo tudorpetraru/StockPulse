@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -274,10 +275,12 @@ class PredictionService:
         session_factory: Callable[[], Session] = SessionLocal,
         score_cfg: ScoreConfig | None = None,
         snapshot_service: PredictionSnapshotService | None = None,
+        yfinance_provider: YFinanceProvider | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._score_cfg = score_cfg or ScoreConfig()
         self._snapshot_service = snapshot_service
+        self._yfinance_provider = yfinance_provider
 
     async def get_analyst_scorecard(self, symbol: str) -> list[dict[str, object]]:
         upper_symbol = symbol.upper()
@@ -369,25 +372,24 @@ class PredictionService:
         sector: str | None = None,
         symbol: str | None = None,
     ) -> list[dict[str, object]]:
-        _ = sector  # Sector scoping is not yet available in the prediction schema.
         with self._session_factory() as db:
-            if symbol:
-                scores = (
-                    db.query(AnalystScore)
-                    .filter(func.upper(AnalystScore.ticker) == symbol.upper(), AnalystScore.composite_score.is_not(None))
-                    .order_by(AnalystScore.composite_score.desc())
-                    .all()
-                )
-            else:
-                scores = (
-                    db.query(AnalystScore)
-                    .filter(AnalystScore.ticker.is_(None), AnalystScore.composite_score.is_not(None))
-                    .order_by(AnalystScore.composite_score.desc())
-                    .all()
-                )
             ticker_rows = db.query(AnalystScore).filter(
                 AnalystScore.ticker.is_not(None), AnalystScore.composite_score.is_not(None)
             ).all()
+            global_rows = db.query(AnalystScore).filter(
+                AnalystScore.ticker.is_(None), AnalystScore.composite_score.is_not(None)
+            ).all()
+
+        filtered_ticker_rows = ticker_rows
+        if symbol:
+            upper_symbol = symbol.upper()
+            filtered_ticker_rows = [row for row in filtered_ticker_rows if (row.ticker or "").upper() == upper_symbol]
+
+        if sector:
+            filtered_ticker_rows = await self._filter_scores_by_sector(filtered_ticker_rows, sector)
+
+        if symbol or sector:
+            return self._aggregate_ticker_scores(filtered_ticker_rows)
 
         tickers_per_firm: dict[str, set[str]] = {}
         for row in ticker_rows:
@@ -395,7 +397,7 @@ class PredictionService:
                 tickers_per_firm.setdefault(row.firm, set()).add(row.ticker)
 
         leaderboard: list[dict[str, object]] = []
-        for score in scores:
+        for score in global_rows:
             if (
                 score.success_rate is None
                 or score.directional_accuracy is None
@@ -407,7 +409,7 @@ class PredictionService:
                 {
                     "firm": score.firm,
                     "total_predictions": score.total_predictions,
-                    "tickers_covered": len(tickers_per_firm.get(score.firm, set())) if score.ticker is None else 1,
+                    "tickers_covered": len(tickers_per_firm.get(score.firm, set())),
                     "success_rate": score.success_rate * 100,
                     "direction_rate": score.directional_accuracy * 100,
                     "avg_error": score.avg_absolute_error * 100,
@@ -424,6 +426,74 @@ class PredictionService:
                     ),
                 }
             )
+        return leaderboard
+
+    async def _filter_scores_by_sector(self, rows: list[AnalystScore], sector: str) -> list[AnalystScore]:
+        if self._yfinance_provider is None:
+            return []
+
+        target = sector.strip().lower()
+        if not target:
+            return rows
+
+        tickers = sorted({(row.ticker or "").upper() for row in rows if row.ticker})
+        ticker_sectors: dict[str, str] = {}
+        for ticker in tickers:
+            try:
+                profile = await self._yfinance_provider.get_company_profile(ticker)
+                profile_sector = str(profile.get("sector") or "").strip()
+                if profile_sector:
+                    ticker_sectors[ticker] = profile_sector.lower()
+            except Exception:  # noqa: BLE001
+                continue
+        return [row for row in rows if row.ticker and ticker_sectors.get(row.ticker.upper()) == target]
+
+    def _aggregate_ticker_scores(self, rows: list[AnalystScore]) -> list[dict[str, object]]:
+        grouped: dict[str, list[AnalystScore]] = defaultdict(list)
+        for row in rows:
+            grouped[row.firm].append(row)
+
+        leaderboard: list[dict[str, object]] = []
+        for firm, firm_rows in grouped.items():
+            valid = [
+                row
+                for row in firm_rows
+                if row.success_rate is not None
+                and row.directional_accuracy is not None
+                and row.avg_absolute_error is not None
+                and row.composite_score is not None
+            ]
+            if not valid:
+                continue
+
+            total_predictions = sum(row.total_predictions for row in valid)
+            if total_predictions <= 0:
+                continue
+
+            def weighted(attr: str) -> float:
+                return (
+                    sum(float(getattr(row, attr) or 0.0) * row.total_predictions for row in valid) / total_predictions
+                )
+
+            best = max(valid, key=lambda row: float(row.composite_score or 0.0))
+            worst = min(valid, key=lambda row: float(row.composite_score or 0.0))
+            tickers_covered = len({row.ticker for row in valid if row.ticker})
+
+            leaderboard.append(
+                {
+                    "firm": firm,
+                    "total_predictions": total_predictions,
+                    "tickers_covered": tickers_covered,
+                    "success_rate": weighted("success_rate") * 100,
+                    "direction_rate": weighted("directional_accuracy") * 100,
+                    "avg_error": weighted("avg_absolute_error") * 100,
+                    "composite": weighted("composite_score") * 100,
+                    "best_call": {"symbol": best.ticker, "detail": "best call"} if best.ticker else None,
+                    "worst_call": {"symbol": worst.ticker, "detail": "worst call"} if worst.ticker else None,
+                }
+            )
+
+        leaderboard.sort(key=lambda row: float(row.get("composite") or 0.0), reverse=True)
         return leaderboard
 
     async def get_firm_history(self, symbol: str, firm: str) -> list[dict[str, object]]:

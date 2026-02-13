@@ -181,6 +181,6 @@
         const spec = await resp.json();
         Plotly.newPlot('consensus-chart', spec.data, spec.layout, { responsive: true, displayModeBar: false });
     }
-    document.addEventListener('DOMContentLoaded', () => loadConsensusChart('{{ symbol }}', '2Y'));
+    loadConsensusChart('{{ symbol }}', '2Y');
 </script>
 {% endif %}

@@ -211,9 +211,110 @@ class YFinanceProvider(BaseProvider):
 
         return await asyncio.to_thread(load)
 
+    async def get_holders(self, symbol: str) -> dict[str, list[dict[str, Any]]]:
+        ticker = await self._ticker(symbol)
+
+        def load() -> dict[str, list[dict[str, Any]]]:
+            institutional_df = getattr(ticker, "institutional_holders", None)
+            mutual_df = getattr(ticker, "mutualfund_holders", None)
+            if mutual_df is None:
+                mutual_df = getattr(ticker, "mutual_fund_holders", None)
+            return {
+                "institutional": _holders_df_to_records(institutional_df),
+                "mutual_fund": _holders_df_to_records(mutual_df),
+            }
+
+        return await asyncio.to_thread(load)
+
+    async def get_earnings(self, symbol: str) -> dict[str, Any]:
+        ticker = await self._ticker(symbol)
+
+        def load() -> dict[str, Any]:
+            history: list[dict[str, Any]] = []
+            next_date = "N/A"
+
+            earnings_dates = getattr(ticker, "earnings_dates", None)
+            if earnings_dates is not None and not getattr(earnings_dates, "empty", True):
+                table = earnings_dates.reset_index()
+                for row in table.to_dict(orient="records")[:8]:
+                    raw_date = row.get("Earnings Date") or row.get("Date") or row.get("index")
+                    dt_value = pd.to_datetime(raw_date, errors="coerce")
+                    if pd.notna(dt_value) and dt_value.tzinfo is None:
+                        dt_value = dt_value.tz_localize("UTC")
+                    if pd.notna(dt_value) and dt_value.date() >= date.today() and next_date == "N/A":
+                        next_date = dt_value.strftime("%Y-%m-%d")
+
+                    estimate = _to_float(row.get("EPS Estimate"))
+                    actual = _to_float(row.get("Reported EPS"))
+                    surprise = _to_float(row.get("Surprise(%)"))
+                    history.append(
+                        {
+                            "quarter": dt_value.strftime("%b %Y") if pd.notna(dt_value) else "N/A",
+                            "date": dt_value.strftime("%Y-%m-%d") if pd.notna(dt_value) else "N/A",
+                            "estimate": estimate,
+                            "actual": actual,
+                            "surprise": surprise,
+                        }
+                    )
+
+            if next_date == "N/A":
+                calendar = getattr(ticker, "calendar", None)
+                if isinstance(calendar, pd.DataFrame) and not calendar.empty:
+                    idx = list(calendar.index)
+                    if idx:
+                        first = pd.to_datetime(idx[0], errors="coerce")
+                        if pd.notna(first):
+                            next_date = first.strftime("%Y-%m-%d")
+
+            return {"history": history, "next_date": next_date}
+
+        return await asyncio.to_thread(load)
+
 
 def _df_to_records(df: pd.DataFrame | None) -> list[dict[str, Any]]:
     if df is None or df.empty:
         return []
     normalized = df.fillna("N/A").reset_index()
     return normalized.to_dict(orient="records")
+
+
+def _holders_df_to_records(df: pd.DataFrame | None) -> list[dict[str, Any]]:
+    if df is None or df.empty:
+        return []
+
+    rows: list[dict[str, Any]] = []
+    for row in df.reset_index().to_dict(orient="records")[:20]:
+        rows.append(
+            {
+                "name": row.get("Holder") or row.get("holder") or row.get("Name"),
+                "shares": _to_float(row.get("Shares") or row.get("shares")),
+                "pct_out": _to_float(row.get("% Out") or row.get("pctHeld") or row.get("Pct Out")),
+                "value": _to_float(row.get("Value") or row.get("value")),
+                "date": _format_date(row.get("Date Reported") or row.get("Date") or row.get("date")),
+            }
+        )
+    return rows
+
+
+def _to_float(value: Any) -> float | None:
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).replace("%", "").replace(",", "").replace("$", "").strip()
+    if not text:
+        return None
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
+def _format_date(value: Any) -> str:
+    if value is None:
+        return "N/A"
+    dt_value = pd.to_datetime(value, errors="coerce")
+    if pd.notna(dt_value):
+        return dt_value.strftime("%Y-%m-%d")
+    text = str(value).strip()
+    return text or "N/A"

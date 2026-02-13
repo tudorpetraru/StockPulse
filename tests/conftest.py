@@ -57,6 +57,71 @@ def _override_get_db():
 
 
 class _TestDataService:
+    async def get_profile(self, symbol: str):
+        return {
+            "name": symbol,
+            "symbol": symbol,
+            "sector": "Technology",
+            "industry": "Software",
+            "exchange": "NASDAQ",
+            "description": "",
+        }
+
+    async def get_price(self, symbol: str):
+        return {"price": 100.0, "change": 1.0, "change_pct": 1.0, "updated": "now"}
+
+    async def get_metrics(self, symbol: str):
+        return {
+            "pe": "20",
+            "fwd_pe": "18",
+            "peg": "1.5",
+            "mkt_cap": "100B",
+            "ev_ebitda": "12",
+            "beta": "1.1",
+            "ps": "4.5",
+            "pb": "6.0",
+            "roe": "12%",
+            "profit_margin": "20%",
+            "debt_equity": "0.3",
+            "insider_own": "2%",
+        }
+
+    async def get_analyst_ratings(self, symbol: str):
+        return {"consensus": "Buy", "count": 0, "low": "N/A", "avg": "N/A", "high": "N/A", "ratings": []}
+
+    async def get_financials(self, symbol: str, period: str = "annual"):
+        return {"columns": [], "income": [], "balance": [], "cashflow": []}
+
+    async def get_news(self, symbol: str, limit: int = 20):
+        return [
+            {
+                "title": f"{symbol} headline",
+                "source": "Test Source",
+                "date": "2026-02-13",
+                "time_ago": "1h ago",
+                "link": "https://example.com/news",
+                "ticker": symbol,
+            }
+        ][:limit]
+
+    async def get_insider_trades(self, symbol: str):
+        return []
+
+    async def get_holders(self, symbol: str):
+        return {"institutional": [], "mutual_fund": []}
+
+    async def get_earnings(self, symbol: str):
+        return {"history": [], "next_date": "N/A"}
+
+    async def get_price_history(self, symbol: str, period: str = "1y"):
+        return [
+            {"date": "2026-02-12", "close": 99.0, "open": 98.0, "high": 100.0, "low": 97.0, "volume": 1000},
+            {"date": "2026-02-13", "close": 100.0, "open": 99.0, "high": 101.0, "low": 98.0, "volume": 1200},
+        ]
+
+    async def get_peers(self, symbol: str):
+        return []
+
     async def screen_stocks(self, filters):  # noqa: D401
         return []
 
