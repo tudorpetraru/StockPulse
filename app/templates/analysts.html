@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Analyst Leaderboard — StockPulse{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <h2 style="font-size:20px;color:var(--navy);">Analyst Leaderboard</h2>
+    <div style="display:flex;gap:8px;align-items:center;">
+        <select class="wf-input" style="width:160px;" onchange="window.location='?sector='+this.value">
+            <option value="">All Sectors</option>
+            {% for s in
+            ["Technology","Healthcare","Finance","Consumer","Energy","Industrials","Communications","Utilities","Real
+            Estate","Materials"] %}
+            <option value="{{ s }}" {% if sector_filter==s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+        </select>
+        <input type="text" class="wf-input" placeholder="Filter by ticker..." value="{{ symbol_filter }}"
+            onkeydown="if(event.key==='Enter') window.location='?symbol='+this.value" style="width:140px;">
+    </div>
+</div>
+
+<!-- ── Top 3 Podium ───────────────────────────────────────────────── -->
+{% if leaderboard|length >= 3 %}
+<div class="podium-grid">
+    {% set medals = ["🥇","🥈","🥉"] %}
+    {% for a in leaderboard[:3] %}
+    <div class="card podium-card" style="text-align:center;">
+        <div style="font-size:32px;">{{ medals[loop.index0] }}</div>
+        <div style="font-size:16px;font-weight:700;color:var(--navy);margin-top:8px;">{{ a.firm }}</div>
+        <div style="font-size:12px;color:var(--gray-600);margin:4px 0 12px;">{{ a.total_predictions }} predictions · {{
+            a.tickers_covered }} tickers</div>
+        <div class="grid-3" style="gap:8px;">
+            <div>
+                <div style="font-size:18px;font-weight:700;color:var(--navy);">{{ "%.0f"|format(a.composite) }}</div>
+                <div style="font-size:10px;color:var(--gray-500);text-transform:uppercase;">Score</div>
+            </div>
+            <div>
+                <div style="font-size:18px;font-weight:700;"
+                    class="{% if a.success_rate >= 60 %}positive{% elif a.success_rate < 40 %}negative{% endif %}">{{
+                    "%.0f"|format(a.success_rate) }}%</div>
+                <div style="font-size:10px;color:var(--gray-500);text-transform:uppercase;">Success</div>
+            </div>
+            <div>
+                <div style="font-size:18px;font-weight:700;">{{ "%.1f"|format(a.avg_error) }}%</div>
+                <div style="font-size:10px;color:var(--gray-500);text-transform:uppercase;">Avg Error</div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- ── Full Leaderboard Table ─────────────────────────────────────── -->
+<div class="card" style="padding:0;overflow:hidden;margin-top:16px;">
+    {% if leaderboard %}
+    <table class="wf-table" id="leaderboard-table">
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Firm</th>
+                <th>Predictions</th>
+                <th>Tickers</th>
+                <th>Success Rate ↕</th>
+                <th>Directional ↕</th>
+                <th>Avg Error ↕</th>
+                <th>Score ↕</th>
+                <th>Best Call</th>
+                <th>Worst Call</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in leaderboard %}
+            <tr>
+                <td>
+                    <span
+                        class="leaderboard-rank {% if loop.index == 1 %}rank-gold{% elif loop.index == 2 %}rank-silver{% elif loop.index == 3 %}rank-bronze{% else %}rank-normal{% endif %}">
+                        {{ loop.index }}
+                    </span>
+                </td>
+                <td style="font-weight:600;">{{ a.firm }}</td>
+                <td>{{ a.total_predictions }}</td>
+                <td>{{ a.tickers_covered }}</td>
+                <td>
+                    <span
+                        class="score-bar {% if a.success_rate >= 60 %}score-high{% elif a.success_rate >= 40 %}score-mid{% else %}score-low{% endif %}">
+                        <span class="score-bar-fill" style="width:{{ a.success_rate }}%"></span>
+                    </span>
+                    <span
+                        class="{% if a.success_rate >= 60 %}positive{% elif a.success_rate < 40 %}negative{% endif %}">{{
+                        "%.0f"|format(a.success_rate) }}%</span>
+                </td>
+                <td class="{% if a.direction_rate >= 70 %}positive{% elif a.direction_rate < 50 %}negative{% endif %}">
+                    {{ "%.0f"|format(a.direction_rate) }}%
+                </td>
+                <td>{{ "%.1f"|format(a.avg_error) }}%</td>
+                <td>
+                    <span
+                        class="badge {% if a.composite >= 70 %}badge-green{% elif a.composite >= 50 %}badge-amber{% else %}badge-red{% endif %}">
+                        {{ "%.0f"|format(a.composite) }}
+                    </span>
+                </td>
+                <td>
+                    {% if a.best_call %}
+                    <a href="/ticker/{{ a.best_call.symbol }}" class="ticker">{{ a.best_call.symbol }}</a>
+                    <span style="font-size:12px;color:var(--green);">{{ a.best_call.detail }}</span>
+                    {% else %}—{% endif %}
+                </td>
+                <td>
+                    {% if a.worst_call %}
+                    <a href="/ticker/{{ a.worst_call.symbol }}" class="ticker">{{ a.worst_call.symbol }}</a>
+                    <span style="font-size:12px;color:var(--red);">{{ a.worst_call.detail }}</span>
+                    {% else %}—{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="padding:48px;text-align:center;color:var(--gray-500);">
+        <h3>📊 Building Analyst Leaderboard</h3>
+        <p style="margin-top:8px;">Not enough resolved predictions yet. The leaderboard populates after analysts have at
+            least 5 resolved predictions each.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    // Client-side sorting for the leaderboard table
+    document.addEventListener('DOMContentLoaded', () => {
+        const table = document.getElementById('leaderboard-table');
+        if (!table) return;
+        const headers = table.querySelectorAll('th');
+        headers.forEach((th, i) => {
+            if (!th.textContent.includes('↕')) return;
+            th.style.cursor = 'pointer';
+            let asc = false;
+            th.addEventListener('click', () => {
+                asc = !asc;
+                const tbody = table.querySelector('tbody');
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+                rows.sort((a, b) => {
+                    const aVal = parseFloat(a.cells[i].textContent) || 0;
+                    const bVal = parseFloat(b.cells[i].textContent) || 0;
+                    return asc ? aVal - bVal : bVal - aVal;
+                });
+                rows.forEach(r => tbody.appendChild(r));
+            });
+        });
+    });
+</script>
+{% endblock %}

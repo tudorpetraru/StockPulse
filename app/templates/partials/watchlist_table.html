@@ -1,0 +1,42 @@
+<!-- Watchlist table partial — swapped in via HTMX -->
+<div class="card card-flush">
+  <table class="sp-table">
+    <thead>
+      <tr>
+        <th data-sort="ticker">Ticker</th>
+        <th>Price</th>
+        <th data-sort="change">Change</th>
+        <th>52W Range</th>
+        <th>P/E</th>
+        <th>Notes</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td><a href="/ticker/{{ item.ticker }}" class="ticker-link">{{ item.ticker }}</a></td>
+        <td>N/A</td>
+        <td class="text-muted">N/A</td>
+        <td class="text-muted" style="font-size:12px;">N/A</td>
+        <td>N/A</td>
+        <td style="font-size:12px;" class="text-muted">{{ item.notes or "" }}</td>
+        <td>
+          <button class="btn btn-sm" style="color:var(--negative);"
+                  hx-delete="/api/watchlist-items/{{ item.id }}"
+                  hx-target="#watchlist-table"
+                  hx-swap="innerHTML"
+                  hx-confirm="Remove {{ item.ticker }}?">
+            ✕
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if not items %}
+  <div style="padding:24px; text-align:center;" class="text-muted">
+    No tickers in this watchlist. Add one above to get started.
+  </div>
+  {% endif %}
+</div>

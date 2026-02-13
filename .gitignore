@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Virtualenv
+.venv/
+
+# Local data
+/data/*.db
+/data/cache/
+
+# Tooling
+.ruff_cache/
+
+# OS
+.DS_Store

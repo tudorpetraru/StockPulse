@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}News — StockPulse{% endblock %}
+
+{% block content %}
+<h2 class="page-title">News Feed</h2>
+
+<!-- Filter Bar -->
+<div style="display:flex; gap:8px; margin-bottom:var(--space-lg); align-items:center;">
+  <div class="btn-group">
+    <a href="/news?filter=all" class="btn btn-sm {{ 'btn-primary' if active_filter == 'all' }}">All</a>
+    <a href="/news?filter=portfolio" class="btn btn-sm {{ 'btn-primary' if active_filter == 'portfolio' }}">Portfolio</a>
+    <a href="/news?filter=watchlist" class="btn btn-sm {{ 'btn-primary' if active_filter == 'watchlist' }}">Watchlist</a>
+    <a href="/news?filter=custom" class="btn btn-sm {{ 'btn-primary' if active_filter == 'custom' }}">Custom</a>
+  </div>
+  <form action="/news" method="get" style="display:flex; gap:4px; margin-left:8px;">
+    <input type="hidden" name="filter" value="custom">
+    <input class="sp-input" name="q" placeholder="Search news... (e.g., AI semiconductor)" value="{{ search_query }}" style="max-width:300px;">
+    <button type="submit" class="btn btn-sm">Search</button>
+  </form>
+</div>
+
+<!-- News Feed -->
+<div id="news-feed" style="max-width:800px;"
+     hx-get="/hx/news/feed?filter={{ active_filter }}&q={{ search_query }}"
+     hx-trigger="newsRefresh from:body"
+     hx-swap="innerHTML">
+  {% include "partials/news_feed.html" %}
+</div>
+{% endblock %}

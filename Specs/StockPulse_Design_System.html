@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockPulse — Design System & Guidelines</title>
+<style>
+  :root {
+    --navy: #1B2A4A; --navy-light: #2C3E6B; --navy-dark: #0F1A2E;
+    --blue: #1976D2; --blue-light: #E3F2FD; --blue-hover: #1565C0;
+    --green: #2E7D32; --green-light: #E8F5E9; --green-bg: #C8E6C9;
+    --red: #C62828; --red-light: #FFEBEE; --red-bg: #FFCDD2;
+    --amber: #F57F17; --amber-light: #FFF8E1; --amber-bg: #FFECB3;
+    --purple: #7B1FA2; --purple-light: #F3E5F5;
+    --gray-50: #FAFAFA; --gray-100: #F5F5F5; --gray-200: #EEEEEE;
+    --gray-300: #E0E0E0; --gray-400: #BDBDBD; --gray-500: #9E9E9E;
+    --gray-600: #757575; --gray-700: #616161; --gray-800: #424242;
+    --gray-900: #212121;
+    --bg: #F8F9FA; --text: #212121;
+    --radius-sm: 4px; --radius: 8px; --radius-lg: 12px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:var(--font); color:var(--text); background:var(--gray-50); line-height:1.6; }
+
+  .header { background:var(--navy); color:white; padding:48px 0; }
+  .header h1 { font-size:32px; margin-bottom:6px; }
+  .header .sub { font-size:16px; opacity:0.7; }
+  .container { max-width:1100px; margin:0 auto; padding:0 32px; }
+
+  nav.sticky { position:sticky; top:0; z-index:100; background:white; border-bottom:1px solid var(--gray-200); box-shadow:var(--shadow-sm); }
+  nav.sticky ul { display:flex; list-style:none; gap:0; overflow-x:auto; }
+  nav.sticky a { display:block; padding:12px 18px; font-size:13px; color:var(--gray-600); text-decoration:none; border-bottom:2px solid transparent; white-space:nowrap; font-weight:500; }
+  nav.sticky a:hover { color:var(--blue); }
+
+  .section { padding:48px 0; border-bottom:1px solid var(--gray-200); }
+  .section:last-child { border-bottom:none; }
+  .section-title { font-size:24px; font-weight:700; color:var(--navy); margin-bottom:4px; }
+  .section-desc { font-size:14px; color:var(--gray-600); margin-bottom:32px; }
+  h3 { font-size:17px; font-weight:600; color:var(--gray-800); margin:28px 0 14px; }
+  p { font-size:14px; color:var(--gray-700); margin-bottom:14px; }
+
+  /* Color swatches */
+  .color-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:12px; }
+  .swatch { border-radius:var(--radius); overflow:hidden; border:1px solid var(--gray-200); box-shadow:var(--shadow-sm); }
+  .swatch-color { height:72px; }
+  .swatch-info { padding:10px 12px; background:white; }
+  .swatch-name { font-size:13px; font-weight:600; color:var(--gray-800); }
+  .swatch-hex { font-size:12px; color:var(--gray-500); font-family:var(--font-mono); }
+  .swatch-usage { font-size:11px; color:var(--gray-500); margin-top:4px; }
+
+  /* Typography samples */
+  .type-sample { background:white; border:1px solid var(--gray-200); border-radius:var(--radius); padding:20px 24px; margin-bottom:12px; display:flex; align-items:baseline; gap:24px; }
+  .type-label { width:120px; flex-shrink:0; font-size:12px; color:var(--gray-500); font-family:var(--font-mono); }
+  .type-spec { font-size:11px; color:var(--gray-400); margin-left:auto; font-family:var(--font-mono); white-space:nowrap; }
+
+  /* Spacing scale */
+  .spacing-row { display:flex; align-items:center; gap:16px; margin-bottom:10px; }
+  .spacing-label { width:80px; font-size:12px; font-family:var(--font-mono); color:var(--gray-600); }
+  .spacing-bar { background:var(--blue-light); border:1px solid var(--blue); border-radius:2px; height:16px; }
+  .spacing-val { font-size:12px; color:var(--gray-500); }
+
+  /* Component showcase */
+  .component-row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+  .showcase { background:white; border:1px solid var(--gray-200); border-radius:var(--radius); padding:24px; margin-bottom:16px; }
+  .showcase-label { font-size:11px; color:var(--gray-400); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; font-weight:600; }
+
+  /* Buttons */
+  .btn { display:inline-flex; align-items:center; gap:6px; padding:8px 18px; border-radius:var(--radius-sm); font-size:14px; font-weight:500; border:1px solid; cursor:default; font-family:var(--font); transition:all 0.15s; }
+  .btn-primary { background:var(--blue); color:white; border-color:var(--blue); }
+  .btn-secondary { background:white; color:var(--gray-700); border-color:var(--gray-300); }
+  .btn-danger { background:white; color:var(--red); border-color:var(--red); }
+  .btn-ghost { background:transparent; color:var(--blue); border-color:transparent; }
+  .btn-sm { padding:5px 12px; font-size:13px; }
+  .btn-lg { padding:10px 24px; font-size:15px; }
+
+  /* Badges */
+  .badge { display:inline-block; padding:3px 10px; border-radius:12px; font-size:12px; font-weight:600; }
+  .badge-green { background:var(--green-light); color:var(--green); }
+  .badge-red { background:var(--red-light); color:var(--red); }
+  .badge-amber { background:var(--amber-light); color:var(--amber); }
+  .badge-blue { background:var(--blue-light); color:var(--blue); }
+  .badge-gray { background:var(--gray-100); color:var(--gray-600); }
+  .badge-purple { background:var(--purple-light); color:var(--purple); }
+
+  /* Cards */
+  .card-demo { background:white; border:1px solid var(--gray-200); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
+  .card-demo .card-header { padding:14px 20px; border-bottom:1px solid var(--gray-100); }
+  .card-demo .card-body { padding:20px; }
+  .card-demo .card-title { font-size:12px; font-weight:700; color:var(--gray-500); text-transform:uppercase; letter-spacing:0.5px; }
+
+  /* Inputs */
+  .input-demo { border:1px solid var(--gray-300); border-radius:var(--radius-sm); padding:8px 12px; font-size:14px; font-family:var(--font); outline:none; width:250px; }
+  .input-demo:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(25,118,210,0.1); }
+  .input-error { border-color:var(--red); }
+  .input-success { border-color:var(--green); }
+
+  /* Tables */
+  .table-demo { width:100%; border-collapse:collapse; }
+  .table-demo th { background:var(--gray-100); padding:10px 14px; text-align:left; font-size:12px; font-weight:600; color:var(--gray-600); text-transform:uppercase; letter-spacing:0.3px; border-bottom:2px solid var(--gray-200); }
+  .table-demo td { padding:10px 14px; border-bottom:1px solid var(--gray-100); font-size:14px; }
+  .table-demo tr:hover td { background:#F0F7FF; }
+
+  /* Metric cell */
+  .metric-demo { padding:12px 16px; background:var(--gray-50); border-radius:var(--radius-sm); border:1px solid var(--gray-200); text-align:center; }
+  .metric-label { font-size:11px; color:var(--gray-500); text-transform:uppercase; letter-spacing:0.3px; }
+  .metric-value { font-size:18px; font-weight:700; color:var(--navy); margin-top:2px; }
+
+  /* Tabs */
+  .tabs-demo { display:flex; border-bottom:2px solid var(--gray-200); }
+  .tab-demo { padding:10px 20px; font-size:14px; color:var(--gray-500); border-bottom:2px solid transparent; margin-bottom:-2px; cursor:default; }
+  .tab-demo.active { color:var(--blue); border-bottom-color:var(--blue); font-weight:600; }
+
+  /* Alert */
+  .alert { padding:12px 16px; border-radius:var(--radius-sm); border:1px solid; font-size:14px; display:flex; align-items:center; gap:10px; }
+  .alert-info { background:var(--blue-light); border-color:#90CAF9; color:#0D47A1; }
+  .alert-success { background:var(--green-light); border-color:var(--green-bg); color:var(--green); }
+  .alert-warning { background:var(--amber-light); border-color:var(--amber-bg); color:#E65100; }
+  .alert-error { background:var(--red-light); border-color:var(--red-bg); color:var(--red); }
+
+  /* Icon grid */
+  .icon-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(100px, 1fr)); gap:12px; }
+  .icon-item { text-align:center; padding:16px 8px; background:white; border:1px solid var(--gray-200); border-radius:var(--radius); }
+  .icon-item .icon { font-size:24px; margin-bottom:6px; }
+  .icon-item .label { font-size:11px; color:var(--gray-500); }
+
+  /* Do / Don't boxes */
+  .do-dont { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:16px 0; }
+  .do-box, .dont-box { padding:16px; border-radius:var(--radius); border:2px solid; }
+  .do-box { border-color:var(--green); background:var(--green-light); }
+  .dont-box { border-color:var(--red); background:var(--red-light); }
+  .do-box h4, .dont-box h4 { font-size:13px; font-weight:700; margin-bottom:8px; }
+  .do-box h4 { color:var(--green); }
+  .dont-box h4 { color:var(--red); }
+  .do-box p, .dont-box p { font-size:13px; margin-bottom:4px; }
+
+  /* Code */
+  code { background:var(--gray-100); padding:2px 6px; border-radius:3px; font-family:var(--font-mono); font-size:13px; color:var(--navy); }
+  pre { background:var(--gray-900); color:#E0E0E0; padding:16px 20px; border-radius:var(--radius); font-family:var(--font-mono); font-size:13px; line-height:1.5; overflow-x:auto; margin:12px 0; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="container">
+    <h1>StockPulse Design System</h1>
+    <div class="sub">Colors, Typography, Components & Layout Guidelines — v1.0</div>
+  </div>
+</div>
+
+<nav class="sticky">
+  <div class="container">
+    <ul>
+      <li><a href="#principles">Principles</a></li>
+      <li><a href="#colors">Colors</a></li>
+      <li><a href="#typography">Typography</a></li>
+      <li><a href="#spacing">Spacing</a></li>
+      <li><a href="#components">Components</a></li>
+      <li><a href="#patterns">Patterns</a></li>
+      <li><a href="#layout">Layout</a></li>
+      <li><a href="#data">Data Display</a></li>
+      <li><a href="#guidelines">Guidelines</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ═══════════ PRINCIPLES ═══════════ -->
+<div id="principles" class="section">
+  <div class="container">
+    <h2 class="section-title">Design Principles</h2>
+    <p class="section-desc">Core beliefs that guide every design decision in StockPulse.</p>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+      <div class="showcase">
+        <h3 style="margin-top:0; color:var(--navy);">1. Data Density Over Decoration</h3>
+        <p>StockPulse is a power-user research tool. Every pixel should serve the data. Minimize whitespace waste, avoid decorative elements, and pack relevant information tightly. Think Bloomberg Terminal, not Instagram.</p>
+      </div>
+      <div class="showcase">
+        <h3 style="margin-top:0; color:var(--navy);">2. Scannable at a Glance</h3>
+        <p>Users need to quickly assess a stock's health. Use color coding (green/red), consistent number formatting, and visual hierarchy to make key metrics instantly parseable without reading.</p>
+      </div>
+      <div class="showcase">
+        <h3 style="margin-top:0; color:var(--navy);">3. Predictable & Consistent</h3>
+        <p>Every ticker symbol is clickable. Every table is sortable. Green means up, red means down. Once a user learns one page, they know them all. Zero surprises.</p>
+      </div>
+      <div class="showcase">
+        <h3 style="margin-top:0; color:var(--navy);">4. Functional, Not Fancy</h3>
+        <p>No animations, no parallax, no gradients. This runs on localhost for one user. Speed and clarity beat aesthetics. Use a classless CSS framework (PicoCSS) and override minimally.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ COLORS ═══════════ -->
+<div id="colors" class="section">
+  <div class="container">
+    <h2 class="section-title">Color Palette</h2>
+    <p class="section-desc">A restrained palette optimized for financial data. Colors are functional — each has a specific meaning.</p>
+
+    <h3>Brand Colors</h3>
+    <div class="color-grid">
+      <div class="swatch"><div class="swatch-color" style="background:#1B2A4A;"></div><div class="swatch-info"><div class="swatch-name">Navy</div><div class="swatch-hex">#1B2A4A</div><div class="swatch-usage">Nav bar, headings, primary text emphasis</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#2C3E6B;"></div><div class="swatch-info"><div class="swatch-name">Navy Light</div><div class="swatch-hex">#2C3E6B</div><div class="swatch-usage">Nav hover, secondary emphasis</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#1976D2;"></div><div class="swatch-info"><div class="swatch-name">Blue</div><div class="swatch-hex">#1976D2</div><div class="swatch-usage">Links, active states, primary buttons, ticker symbols</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#E3F2FD;"></div><div class="swatch-info"><div class="swatch-name">Blue Light</div><div class="swatch-hex">#E3F2FD</div><div class="swatch-usage">Selected row, hover states, active sidebar</div></div></div>
+    </div>
+
+    <h3>Semantic Colors (Financial)</h3>
+    <div class="color-grid">
+      <div class="swatch"><div class="swatch-color" style="background:#2E7D32;"></div><div class="swatch-info"><div class="swatch-name">Green (Positive)</div><div class="swatch-hex">#2E7D32</div><div class="swatch-usage">Positive change, gains, buy ratings, success</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#E8F5E9;"></div><div class="swatch-info"><div class="swatch-name">Green Light</div><div class="swatch-hex">#E8F5E9</div><div class="swatch-usage">Positive badges, P0 priority, success alerts</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#C62828;"></div><div class="swatch-info"><div class="swatch-name">Red (Negative)</div><div class="swatch-hex">#C62828</div><div class="swatch-usage">Negative change, losses, sell ratings, errors</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#FFEBEE;"></div><div class="swatch-info"><div class="swatch-name">Red Light</div><div class="swatch-hex">#FFEBEE</div><div class="swatch-usage">Negative badges, error alerts, delete actions</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#F57F17;"></div><div class="swatch-info"><div class="swatch-name">Amber (Neutral)</div><div class="swatch-hex">#F57F17</div><div class="swatch-usage">Hold ratings, warnings, P1 priority, medium risk</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#FFF8E1;"></div><div class="swatch-info"><div class="swatch-name">Amber Light</div><div class="swatch-hex">#FFF8E1</div><div class="swatch-usage">Warning alerts, hold badges, caution states</div></div></div>
+    </div>
+
+    <h3>Neutrals</h3>
+    <div class="color-grid">
+      <div class="swatch"><div class="swatch-color" style="background:#212121;"></div><div class="swatch-info"><div class="swatch-name">Gray 900</div><div class="swatch-hex">#212121</div><div class="swatch-usage">Primary body text</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#616161;"></div><div class="swatch-info"><div class="swatch-name">Gray 700</div><div class="swatch-hex">#616161</div><div class="swatch-usage">Secondary text, descriptions</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#9E9E9E;"></div><div class="swatch-info"><div class="swatch-name">Gray 500</div><div class="swatch-hex">#9E9E9E</div><div class="swatch-usage">Placeholders, labels, meta text</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#E0E0E0;"></div><div class="swatch-info"><div class="swatch-name">Gray 300</div><div class="swatch-hex">#E0E0E0</div><div class="swatch-usage">Borders, dividers</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#F5F5F5;"></div><div class="swatch-info"><div class="swatch-name">Gray 100</div><div class="swatch-hex">#F5F5F5</div><div class="swatch-usage">Table header, alternate rows, subtle bg</div></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#F8F9FA;"></div><div class="swatch-info"><div class="swatch-name">Background</div><div class="swatch-hex">#F8F9FA</div><div class="swatch-usage">Page background</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ TYPOGRAPHY ═══════════ -->
+<div id="typography" class="section">
+  <div class="container">
+    <h2 class="section-title">Typography</h2>
+    <p class="section-desc">System font stack for maximum performance. No web fonts to load — instant rendering on localhost.</p>
+
+    <p><strong>Font Stack:</strong> <code>-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif</code></p>
+    <p><strong>Monospace:</strong> <code>'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace</code></p>
+
+    <h3>Type Scale</h3>
+    <div class="type-sample">
+      <div class="type-label">Page Title</div>
+      <div style="font-size:24px; font-weight:700; color:var(--navy);">Stock Screener</div>
+      <div class="type-spec">24px / 700 / Navy</div>
+    </div>
+    <div class="type-sample">
+      <div class="type-label">Section Title</div>
+      <div style="font-size:18px; font-weight:600; color:var(--gray-800);">Financial Statements</div>
+      <div class="type-spec">18px / 600 / Gray-800</div>
+    </div>
+    <div class="type-sample">
+      <div class="type-label">Card Title</div>
+      <div style="font-size:12px; font-weight:700; color:var(--gray-500); text-transform:uppercase; letter-spacing:0.5px;">PORTFOLIO SUMMARY</div>
+      <div class="type-spec">12px / 700 / Gray-500 / CAPS</div>
+    </div>
+    <div class="type-sample">
+      <div class="type-label">Body</div>
+      <div style="font-size:14px; color:var(--gray-800);">NVIDIA Corporation reported Q4 revenue of $22.1 billion.</div>
+      <div class="type-spec">14px / 400 / Gray-800</div>
+    </div>
+    <div class="type-sample">
+      <div class="type-label">Table Cell</div>
+      <div style="font-size:13px; color:var(--text);">$142.56</div>
+      <div class="type-spec">13px / 400 / Text</div>
+    </div>
+    <div class="type-sample">
+      <div class="type-label">Stat Value</div>
+      <div style="font-size:28px; font-weight:700; color:var(--navy);">$127,450</div>
+      <div class="type-spec">28px / 700 / Navy</div>
+    </div>
+    <div class="type-sample">
+      <div class="type-label">Metric Value</div>
+      <div style="font-size:16px; font-weight:600; color:var(--navy);">55.3</div>
+      <div class="type-spec">16px / 600 / Navy</div>
+    </div>
+    <div class="type-sample">
+      <div class="type-label">Label</div>
+      <div style="font-size:11px; color:var(--gray-500); text-transform:uppercase; letter-spacing:0.3px;">P/E RATIO</div>
+      <div class="type-spec">11px / 400 / Gray-500 / CAPS</div>
+    </div>
+    <div class="type-sample">
+      <div class="type-label">Meta / Caption</div>
+      <div style="font-size:12px; color:var(--gray-500);">Reuters · 2 hours ago · Feb 12, 2026</div>
+      <div class="type-spec">12px / 400 / Gray-500</div>
+    </div>
+
+    <h3>Number Formatting Rules</h3>
+    <div class="showcase">
+      <p><strong>Prices:</strong> Always 2 decimal places → <code>$142.56</code>, never <code>$142.6</code></p>
+      <p><strong>Percentages:</strong> 1 decimal place → <code>+4.2%</code>, never <code>+4.20%</code></p>
+      <p><strong>Large numbers:</strong> Abbreviate with suffix → <code>$3.49T</code>, <code>$706B</code>, <code>52.3M</code></p>
+      <p><strong>Ratios:</strong> 1 decimal place → <code>P/E 55.3</code>, <code>Beta 1.67</code></p>
+      <p><strong>Sign prefix:</strong> Always show + for positive changes → <code>+$1,234</code>, <code>+0.98%</code></p>
+      <p><strong>N/A:</strong> Use "N/A" (not "—" or blank) for missing numeric data</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SPACING ═══════════ -->
+<div id="spacing" class="section">
+  <div class="container">
+    <h2 class="section-title">Spacing Scale</h2>
+    <p class="section-desc">Consistent 4px base unit. Use these specific values — no arbitrary pixel counts.</p>
+
+    <div class="spacing-row"><div class="spacing-label">4px (xs)</div><div class="spacing-bar" style="width:4px;"></div><div class="spacing-val">Inline element gaps</div></div>
+    <div class="spacing-row"><div class="spacing-label">8px (sm)</div><div class="spacing-bar" style="width:32px;"></div><div class="spacing-val">Between related items (filter rows, news meta)</div></div>
+    <div class="spacing-row"><div class="spacing-label">12px (md)</div><div class="spacing-bar" style="width:48px;"></div><div class="spacing-val">Grid gaps, metric cells, between form elements</div></div>
+    <div class="spacing-row"><div class="spacing-label">16px (lg)</div><div class="spacing-bar" style="width:64px;"></div><div class="spacing-val">Card spacing, between sections within a card</div></div>
+    <div class="spacing-row"><div class="spacing-label">20px (xl)</div><div class="spacing-bar" style="width:80px;"></div><div class="spacing-val">Card padding, sidebar-to-content gap</div></div>
+    <div class="spacing-row"><div class="spacing-label">24px (2xl)</div><div class="spacing-bar" style="width:96px;"></div><div class="spacing-val">Page-level padding, between major page sections</div></div>
+    <div class="spacing-row"><div class="spacing-label">32px (3xl)</div><div class="spacing-bar" style="width:128px;"></div><div class="spacing-val">Between page sections, page top/bottom margin</div></div>
+    <div class="spacing-row"><div class="spacing-label">48px (4xl)</div><div class="spacing-bar" style="width:192px;"></div><div class="spacing-val">Major section separations (rarely used)</div></div>
+
+    <h3>Border Radius</h3>
+    <div class="component-row" style="gap:24px; margin-top:12px;">
+      <div style="text-align:center;"><div style="width:60px; height:40px; background:var(--blue-light); border:1px solid var(--blue); border-radius:4px;"></div><div style="font-size:11px; color:var(--gray-500); margin-top:6px;"><code>4px</code> Buttons, inputs</div></div>
+      <div style="text-align:center;"><div style="width:60px; height:40px; background:var(--blue-light); border:1px solid var(--blue); border-radius:8px;"></div><div style="font-size:11px; color:var(--gray-500); margin-top:6px;"><code>8px</code> Cards, modals</div></div>
+      <div style="text-align:center;"><div style="width:60px; height:40px; background:var(--blue-light); border:1px solid var(--blue); border-radius:12px;"></div><div style="font-size:11px; color:var(--gray-500); margin-top:6px;"><code>12px</code> Page frame, badges</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ COMPONENTS ═══════════ -->
+<div id="components" class="section">
+  <div class="container">
+    <h2 class="section-title">Component Library</h2>
+    <p class="section-desc">Reusable UI components used across all pages. Built with PicoCSS base + minimal custom CSS.</p>
+
+    <!-- Buttons -->
+    <h3>Buttons</h3>
+    <div class="showcase">
+      <div class="showcase-label">Variants</div>
+      <div class="component-row">
+        <button class="btn btn-primary">Primary</button>
+        <button class="btn btn-secondary">Secondary</button>
+        <button class="btn btn-danger">Danger</button>
+        <button class="btn btn-ghost">Ghost</button>
+      </div>
+      <div class="showcase-label" style="margin-top:16px;">Sizes</div>
+      <div class="component-row">
+        <button class="btn btn-primary btn-sm">Small</button>
+        <button class="btn btn-primary">Default</button>
+        <button class="btn btn-primary btn-lg">Large</button>
+      </div>
+    </div>
+
+    <!-- Badges -->
+    <h3>Badges</h3>
+    <div class="showcase">
+      <div class="showcase-label">Financial</div>
+      <div class="component-row">
+        <span class="badge badge-green">Strong Buy</span>
+        <span class="badge badge-green">Buy</span>
+        <span class="badge badge-amber">Hold</span>
+        <span class="badge badge-red">Sell</span>
+        <span class="badge badge-red">Strong Sell</span>
+      </div>
+      <div class="showcase-label" style="margin-top:16px;">Priority</div>
+      <div class="component-row">
+        <span class="badge badge-green">P0</span>
+        <span class="badge badge-amber">P1</span>
+        <span class="badge badge-purple">P2</span>
+      </div>
+      <div class="showcase-label" style="margin-top:16px;">Status</div>
+      <div class="component-row">
+        <span class="badge badge-blue">NVDA</span>
+        <span class="badge badge-blue">AAPL</span>
+        <span class="badge badge-gray">Market</span>
+      </div>
+    </div>
+
+    <!-- Inputs -->
+    <h3>Form Inputs</h3>
+    <div class="showcase">
+      <div class="component-row" style="flex-direction:column; align-items:flex-start; gap:12px;">
+        <div>
+          <div style="font-size:12px; font-weight:600; color:var(--gray-600); margin-bottom:4px;">Default</div>
+          <input class="input-demo" placeholder="Search ticker..." readonly>
+        </div>
+        <div>
+          <div style="font-size:12px; font-weight:600; color:var(--gray-600); margin-bottom:4px;">With Value</div>
+          <input class="input-demo" value="AAPL" readonly>
+        </div>
+        <div>
+          <div style="font-size:12px; font-weight:600; color:var(--gray-600); margin-bottom:4px;">Error State</div>
+          <input class="input-demo input-error" value="XYZZ" readonly>
+          <div style="font-size:12px; color:var(--red); margin-top:4px;">Ticker not found</div>
+        </div>
+        <div>
+          <div style="font-size:12px; font-weight:600; color:var(--gray-600); margin-bottom:4px;">Success State</div>
+          <input class="input-demo input-success" value="NVDA" readonly>
+          <div style="font-size:12px; color:var(--green); margin-top:4px;">✓ NVIDIA Corporation (NASDAQ)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alerts -->
+    <h3>Alerts & Notifications</h3>
+    <div class="showcase">
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="alert alert-info">ℹ️ Portfolio data refreshed 3 minutes ago. Next refresh in 12 minutes.</div>
+        <div class="alert alert-success">✅ Position added: 50 shares of AAPL at $178.50</div>
+        <div class="alert alert-warning">⚠️ yfinance rate limit reached. Using cached data (15 min old).</div>
+        <div class="alert alert-error">❌ Analyst data temporarily unavailable. <u>Click to retry.</u></div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <h3>Tabs</h3>
+    <div class="showcase">
+      <div class="tabs-demo">
+        <div class="tab-demo active">Overview</div>
+        <div class="tab-demo">Financials</div>
+        <div class="tab-demo">News</div>
+        <div class="tab-demo">Insiders</div>
+        <div class="tab-demo">Holders</div>
+        <div class="tab-demo">Earnings</div>
+      </div>
+    </div>
+
+    <!-- Metric Cells -->
+    <h3>Metric Cells</h3>
+    <div class="showcase">
+      <div class="showcase-label">Key metrics grid (12 cells, 6 per row)</div>
+      <div style="display:grid; grid-template-columns:repeat(6, 1fr); gap:10px;">
+        <div class="metric-demo"><div class="metric-label">P/E</div><div class="metric-value">55.3</div></div>
+        <div class="metric-demo"><div class="metric-label">Fwd P/E</div><div class="metric-value">32.1</div></div>
+        <div class="metric-demo"><div class="metric-label">PEG</div><div class="metric-value">0.84</div></div>
+        <div class="metric-demo"><div class="metric-label">Mkt Cap</div><div class="metric-value">$3.49T</div></div>
+        <div class="metric-demo"><div class="metric-label">EV/EBITDA</div><div class="metric-value">47.2</div></div>
+        <div class="metric-demo"><div class="metric-label">Beta</div><div class="metric-value">1.67</div></div>
+      </div>
+    </div>
+
+    <!-- Card -->
+    <h3>Card</h3>
+    <div class="showcase">
+      <div class="card-demo" style="max-width:400px;">
+        <div class="card-header"><div class="card-title">Portfolio Summary</div></div>
+        <div class="card-body">
+          <p style="font-size:13px;">Cards contain a labeled header with uppercase title, a 1px border, 8px radius, and subtle shadow. Body padding is 20px.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PATTERNS ═══════════ -->
+<div id="patterns" class="section">
+  <div class="container">
+    <h2 class="section-title">Data Display Patterns</h2>
+    <p class="section-desc">How financial data is consistently presented across the application.</p>
+
+    <h3>Price Change Display</h3>
+    <div class="showcase">
+      <div class="showcase-label">Positive (green, + prefix)</div>
+      <div class="component-row">
+        <span style="color:var(--green); font-weight:600; font-size:16px;">+$5.74 (+4.20%)</span>
+        <span style="color:var(--green); font-size:14px;">+4.2%</span>
+        <span style="color:var(--green); font-size:14px;">+$1,234</span>
+      </div>
+      <div class="showcase-label" style="margin-top:12px;">Negative (red, - prefix)</div>
+      <div class="component-row">
+        <span style="color:var(--red); font-weight:600; font-size:16px;">-$3.21 (-1.80%)</span>
+        <span style="color:var(--red); font-size:14px;">-1.8%</span>
+        <span style="color:var(--red); font-size:14px;">-$567</span>
+      </div>
+      <div class="showcase-label" style="margin-top:12px;">Flat (gray, no prefix)</div>
+      <div class="component-row">
+        <span style="color:var(--gray-500); font-size:14px;">$0.00 (0.0%)</span>
+      </div>
+    </div>
+
+    <h3>Ticker Symbol Link</h3>
+    <div class="showcase">
+      <p>Ticker symbols are <strong>always</strong> styled as clickable blue links: <span style="color:var(--blue); font-weight:600; cursor:pointer;">NVDA</span>, <span style="color:var(--blue); font-weight:600; cursor:pointer;">AAPL</span>, <span style="color:var(--blue); font-weight:600; cursor:pointer;">MSFT</span></p>
+      <p>They always navigate to <code>/ticker/{symbol}</code>. This is consistent everywhere: tables, news items, badges, charts.</p>
+    </div>
+
+    <h3>Table Pattern</h3>
+    <div class="showcase">
+      <table class="table-demo" style="max-width:600px;">
+        <thead>
+          <tr><th>Ticker</th><th>Price</th><th>Change</th><th>P/E</th><th>Mkt Cap</th></tr>
+        </thead>
+        <tbody>
+          <tr><td style="color:var(--blue); font-weight:600;">NVDA</td><td>$142.56</td><td style="color:var(--green);">+4.2%</td><td>55.3</td><td>$3.49T</td></tr>
+          <tr><td style="color:var(--blue); font-weight:600;">AAPL</td><td>$189.84</td><td style="color:var(--green);">+1.2%</td><td>29.4</td><td>$2.94T</td></tr>
+          <tr><td style="color:var(--blue); font-weight:600;">INTC</td><td>$31.45</td><td style="color:var(--red);">-3.1%</td><td>N/A</td><td>$134B</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:12px; font-size:13px;">Rules: header row has gray background + uppercase labels + 2px bottom border. Data rows have 1px bottom border. Hover highlights blue. Column headers are sortable (show ↕ indicator).</p>
+    </div>
+
+    <h3>Empty / Error / Loading States</h3>
+    <div class="do-dont">
+      <div class="do-box">
+        <h4>✓ Do</h4>
+        <p>Show "N/A" for missing numeric values</p>
+        <p>Show retry button with error description</p>
+        <p>Show stale data with age indicator</p>
+        <p>Load tab content lazily with skeleton</p>
+      </div>
+      <div class="dont-box">
+        <h4>✗ Don't</h4>
+        <p>Leave fields blank or show "undefined"</p>
+        <p>Show generic "Something went wrong"</p>
+        <p>Show nothing when API fails</p>
+        <p>Block entire page for one panel's data</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ LAYOUT ═══════════ -->
+<div id="layout" class="section">
+  <div class="container">
+    <h2 class="section-title">Layout System</h2>
+    <p class="section-desc">CSS Grid-based layouts with consistent breakpoints and proportions.</p>
+
+    <h3>Page Layout</h3>
+    <div class="showcase">
+      <pre>┌──────────────────────────────────────────────┐
+│  Nav Bar (48px height, 100% width, sticky)   │
+├──────────────────────────────────────────────┤
+│  Page Body (24px padding, #F8F9FA bg)        │
+│  ┌────────────────────────────────────────┐  │
+│  │  Content Area (max-width: 1400px,      │  │
+│  │  centered, responsive)                 │  │
+│  └────────────────────────────────────────┘  │
+└──────────────────────────────────────────────┘</pre>
+    </div>
+
+    <h3>Grid Patterns Used</h3>
+    <div class="showcase">
+      <div class="showcase-label">2-Column (Dashboard: summary + news)</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+        <div style="background:var(--blue-light); padding:16px; border-radius:var(--radius-sm); text-align:center; font-size:13px; color:var(--blue);">Left panel</div>
+        <div style="background:var(--blue-light); padding:16px; border-radius:var(--radius-sm); text-align:center; font-size:13px; color:var(--blue);">Right panel</div>
+      </div>
+
+      <div class="showcase-label">Sidebar + Content (Portfolio, Screener)</div>
+      <div style="display:grid; grid-template-columns:220px 1fr; gap:12px; margin-bottom:16px;">
+        <div style="background:var(--amber-light); padding:16px; border-radius:var(--radius-sm); text-align:center; font-size:13px; color:var(--amber);">220px sidebar</div>
+        <div style="background:var(--blue-light); padding:16px; border-radius:var(--radius-sm); text-align:center; font-size:13px; color:var(--blue);">Fluid content</div>
+      </div>
+
+      <div class="showcase-label">6-Column Metrics Grid</div>
+      <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-bottom:16px;">
+        <div style="background:var(--green-light); padding:12px 8px; border-radius:var(--radius-sm); text-align:center; font-size:11px; color:var(--green);">Metric</div>
+        <div style="background:var(--green-light); padding:12px 8px; border-radius:var(--radius-sm); text-align:center; font-size:11px; color:var(--green);">Metric</div>
+        <div style="background:var(--green-light); padding:12px 8px; border-radius:var(--radius-sm); text-align:center; font-size:11px; color:var(--green);">Metric</div>
+        <div style="background:var(--green-light); padding:12px 8px; border-radius:var(--radius-sm); text-align:center; font-size:11px; color:var(--green);">Metric</div>
+        <div style="background:var(--green-light); padding:12px 8px; border-radius:var(--radius-sm); text-align:center; font-size:11px; color:var(--green);">Metric</div>
+        <div style="background:var(--green-light); padding:12px 8px; border-radius:var(--radius-sm); text-align:center; font-size:11px; color:var(--green);">Metric</div>
+      </div>
+
+      <div class="showcase-label">4-Column Stats</div>
+      <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px;">
+        <div style="background:var(--purple-light); padding:16px 8px; border-radius:var(--radius-sm); text-align:center; font-size:11px; color:var(--purple);">Stat</div>
+        <div style="background:var(--purple-light); padding:16px 8px; border-radius:var(--radius-sm); text-align:center; font-size:11px; color:var(--purple);">Stat</div>
+        <div style="background:var(--purple-light); padding:16px 8px; border-radius:var(--radius-sm); text-align:center; font-size:11px; color:var(--purple);">Stat</div>
+        <div style="background:var(--purple-light); padding:16px 8px; border-radius:var(--radius-sm); text-align:center; font-size:11px; color:var(--purple);">Stat</div>
+      </div>
+    </div>
+
+    <h3>Responsive Behavior</h3>
+    <p>Since this is a local desktop tool, responsive design is minimal. However, the layout should remain usable at viewport widths from 1024px to 1920px. Below 1024px, the 6-column metric grid collapses to 3 columns, and the sidebar layout stacks vertically.</p>
+  </div>
+</div>
+
+<!-- ═══════════ DATA DISPLAY ═══════════ -->
+<div id="data" class="section">
+  <div class="container">
+    <h2 class="section-title">Financial Data Guidelines</h2>
+    <p class="section-desc">Specific conventions for displaying financial data consistently.</p>
+
+    <h3>Color Coding Rules (Non-Negotiable)</h3>
+    <div class="showcase">
+      <table class="table-demo">
+        <thead><tr><th>Context</th><th>Positive</th><th>Negative</th><th>Neutral/Missing</th></tr></thead>
+        <tbody>
+          <tr><td>Price change</td><td style="color:var(--green);">Green #2E7D32</td><td style="color:var(--red);">Red #C62828</td><td style="color:var(--gray-500);">Gray #9E9E9E</td></tr>
+          <tr><td>P&L</td><td style="color:var(--green);">Green + prefix</td><td style="color:var(--red);">Red - prefix</td><td style="color:var(--gray-500);">Gray $0.00</td></tr>
+          <tr><td>Analyst rating</td><td><span class="badge badge-green">Buy / Strong Buy</span></td><td><span class="badge badge-red">Sell / Strong Sell</span></td><td><span class="badge badge-amber">Hold</span></td></tr>
+          <tr><td>Insider transaction</td><td style="color:var(--green);">Purchase</td><td style="color:var(--red);">Sale</td><td style="color:var(--gray-500);">Other</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Chart Standards</h3>
+    <div class="showcase">
+      <p><strong>Library:</strong> Plotly.js (JSON specs generated by Python backend)</p>
+      <p><strong>Color scheme:</strong> Navy (#1B2A4A) for primary line, Blue (#1976D2) for SMA50, Red (#C62828) for SMA200, Gray (#BDBDBD80) for volume bars</p>
+      <p><strong>Background:</strong> White with light gray gridlines (#EEEEEE)</p>
+      <p><strong>Period selector:</strong> 1M | 3M | 6M | 1Y | 5Y — default to 1Y</p>
+      <p><strong>Hover:</strong> Show OHLCV tooltip with date, prices, and volume</p>
+      <p><strong>Allocation charts:</strong> Use the brand color sequence: Navy, Blue, Green, Amber, Red, Purple, then Gray shades for overflow</p>
+    </div>
+
+    <h3>CSS Variables for Implementation</h3>
+    <pre>:root {
+  /* Brand */
+  --navy: #1B2A4A;
+  --blue: #1976D2;
+  --blue-light: #E3F2FD;
+
+  /* Semantic (financial) */
+  --positive: #2E7D32;
+  --positive-bg: #E8F5E9;
+  --negative: #C62828;
+  --negative-bg: #FFEBEE;
+  --neutral: #F57F17;
+  --neutral-bg: #FFF8E1;
+
+  /* Neutrals */
+  --text-primary: #212121;
+  --text-secondary: #616161;
+  --text-muted: #9E9E9E;
+  --border: #E0E0E0;
+  --bg-page: #F8F9FA;
+  --bg-card: #FFFFFF;
+  --bg-subtle: #F5F5F5;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 20px;
+  --space-2xl: 24px;
+  --space-3xl: 32px;
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius: 8px;
+  --radius-lg: 12px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+
+  /* Typography */
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'SF Mono', Consolas, monospace;
+}</pre>
+  </div>
+</div>
+
+<!-- ═══════════ GUIDELINES ═══════════ -->
+<div id="guidelines" class="section">
+  <div class="container">
+    <h2 class="section-title">Implementation Guidelines</h2>
+    <p class="section-desc">Rules and conventions for building the frontend.</p>
+
+    <h3>CSS Approach</h3>
+    <p>Start with <strong>PicoCSS</strong> (classless CSS framework) as the base. Override with a single <code>custom.css</code> file. Target total custom CSS at under 500 lines.</p>
+
+    <div class="do-dont">
+      <div class="do-box">
+        <h4>✓ Do</h4>
+        <p>Use semantic HTML elements (<code>&lt;table&gt;</code>, <code>&lt;nav&gt;</code>, <code>&lt;article&gt;</code>)</p>
+        <p>Rely on PicoCSS defaults for base styling</p>
+        <p>Use CSS custom properties for all colors</p>
+        <p>Use CSS Grid for page layouts</p>
+        <p>Keep one CSS file (custom.css)</p>
+      </div>
+      <div class="dont-box">
+        <h4>✗ Don't</h4>
+        <p>Add Tailwind, Bootstrap, or other large frameworks</p>
+        <p>Use inline styles in templates</p>
+        <p>Create component-specific CSS files</p>
+        <p>Use CSS-in-JS or CSS modules</p>
+        <p>Add CSS animations or transitions (except hover color changes)</p>
+      </div>
+    </div>
+
+    <h3>JavaScript Approach</h3>
+    <div class="do-dont">
+      <div class="do-box">
+        <h4>✓ Do</h4>
+        <p>Use HTMX for all server interactions (forms, tabs, pagination)</p>
+        <p>Use Alpine.js for small client-side state (dropdowns, modals, toggles)</p>
+        <p>Use Plotly.js for all charts (fetch JSON specs from API)</p>
+        <p>Keep JS in one <code>app.js</code> file for keyboard shortcuts + global helpers</p>
+      </div>
+      <div class="dont-box">
+        <h4>✗ Don't</h4>
+        <p>Use React, Vue, or any SPA framework</p>
+        <p>Write custom AJAX/fetch calls (use HTMX)</p>
+        <p>Build client-side routing</p>
+        <p>Add build tools (Webpack, Vite, esbuild)</p>
+        <p>Use npm/node for frontend dependencies (load from CDN)</p>
+      </div>
+    </div>
+
+    <h3>Template Conventions (Jinja2)</h3>
+    <div class="showcase">
+      <p><strong>Base template:</strong> <code>base.html</code> contains nav, head (CSS/JS imports), footer, and defines blocks: <code>{% block title %}</code>, <code>{% block content %}</code></p>
+      <p><strong>Full pages:</strong> Extend base.html. Located in <code>templates/</code> root. Named by route: <code>dashboard.html</code>, <code>screener.html</code>.</p>
+      <p><strong>HTMX partials:</strong> Stand-alone HTML fragments (no base extend). Located in <code>templates/partials/</code>. Named by function: <code>ticker_financials.html</code>, <code>portfolio_table.html</code>.</p>
+      <p><strong>Naming:</strong> snake_case for all template files. Match router function names.</p>
+    </div>
+
+    <h3>Accessibility Baseline</h3>
+    <div class="showcase">
+      <p>Since this is a personal tool, full WCAG compliance isn't required, but these basics make the tool more usable:</p>
+      <p>All interactive elements must be keyboard-focusable. Tables must have <code>&lt;thead&gt;</code> with <code>&lt;th&gt;</code> elements. Color is never the only indicator — always pair with + / - signs or text labels. Form inputs must have associated <code>&lt;label&gt;</code> elements.</p>
+    </div>
+  </div>
+</div>
+
+<div style="background:var(--gray-100); padding:32px 0; text-align:center; color:var(--gray-500); font-size:13px; border-top:1px solid var(--gray-200);">
+  StockPulse Design System v1.0 · February 2026
+</div>
+
+</body>
+</html>

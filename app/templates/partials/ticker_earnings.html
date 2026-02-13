@@ -1,0 +1,48 @@
+<!-- Earnings tab partial -->
+{% if status == "error" %}
+<div class="alert alert-error">❌ Earnings data temporarily unavailable. <a hx-get="/hx/ticker/{{ symbol }}/earnings"
+        hx-target="#tab-content" hx-swap="innerHTML">Click to retry.</a></div>
+{% else %}
+<div class="grid-2">
+    <div class="card">
+        <div class="card-title">Earnings History</div>
+        {% if earnings.history %}
+        <table class="wf-table">
+            <thead>
+                <tr>
+                    <th>Quarter</th>
+                    <th>Date</th>
+                    <th>EPS Est.</th>
+                    <th>EPS Actual</th>
+                    <th>Surprise</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in earnings.history %}
+                <tr>
+                    <td style="font-weight:500;">{{ e.quarter }}</td>
+                    <td>{{ e.date }}</td>
+                    <td>${{ "%.2f"|format(e.estimate) if e.estimate is not none else "N/A" }}</td>
+                    <td>${{ "%.2f"|format(e.actual) if e.actual is not none else "N/A" }}</td>
+                    <td class="{% if e.surprise and e.surprise >= 0 %}positive{% elif e.surprise %}negative{% endif %}">
+                        {% if e.surprise is not none %}{% if e.surprise >= 0 %}+{% endif %}{{ "%.1f"|format(e.surprise)
+                        }}%{% else %}N/A{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color:var(--gray-500);font-size:13px;">No earnings history available.</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="card-title">Next Earnings Date</div>
+        <div class="stat" style="margin-top:16px;">
+            <div class="stat-value">{{ earnings.next_date }}</div>
+            <div class="stat-label">Estimated Reporting Date</div>
+        </div>
+    </div>
+</div>
+{% endif %}

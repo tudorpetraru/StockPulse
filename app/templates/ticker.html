@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% block title %}{{ profile.name }} ({{ symbol }}) — StockPulse{% endblock %}
+
+{% block content %}
+<!-- ── Company Header Card ──────────────────────────────────────────── -->
+<div class="card">
+  <div class="company-header">
+    <div>
+      <div class="company-name">
+        {{ profile.name }}
+        <span class="company-symbol">{{ symbol }}</span>
+      </div>
+      <div class="company-sub">
+        {{ profile.sector }} · {{ profile.industry }} · {{ profile.exchange }}
+        · Last updated {{ price.updated }}
+      </div>
+      <div class="company-actions">
+        <button class="btn btn-sm btn-primary"
+                hx-post="/api/watchlist/add"
+                hx-vals='{"symbol":"{{ symbol }}"}'
+                hx-swap="none">+ Add to Watchlist</button>
+        <button class="btn btn-sm"
+                onclick="document.getElementById('add-position-modal').showModal()">Add Position</button>
+        <button class="btn btn-sm"
+                hx-get="/ticker/{{ symbol }}"
+                hx-target="body"
+                hx-push-url="true">Refresh ↻</button>
+      </div>
+    </div>
+    <div class="company-price">
+      <div class="price">${{ "%.2f"|format(price.price) }}</div>
+      <div class="change {% if price.change >= 0 %}positive{% else %}negative{% endif %}">
+        {% if price.change >= 0 %}+{% endif %}${{ "%.2f"|format(price.change) }}
+        ({% if price.change_pct >= 0 %}+{% endif %}{{ "%.1f"|format(price.change_pct) }}%) today
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Key Metrics Grid (6×2) ─────────────────────────────────────── -->
+  <div class="metrics-grid">
+    {% set metric_items = [
+      ("P/E", metrics.pe), ("Fwd P/E", metrics.fwd_pe), ("PEG", metrics.peg),
+      ("Mkt Cap", metrics.mkt_cap), ("EV/EBITDA", metrics.ev_ebitda), ("Beta", metrics.beta),
+      ("P/S", metrics.ps), ("P/B", metrics.pb), ("ROE", metrics.roe),
+      ("Profit Margin", metrics.profit_margin), ("Debt/Equity", metrics.debt_equity),
+      ("Insider Own", metrics.insider_own),
+    ] %}
+    {% for label, value in metric_items %}
+    <div class="metric">
+      <div class="metric-label">{{ label }}</div>
+      <div class="metric-value">{{ value }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ── Tab Bar ──────────────────────────────────────────────────────── -->
+<div class="ticker-tabs" x-data="{ tab: 'overview' }">
+  <div class="wf-tabs">
+    <div class="wf-tab" :class="{ active: tab === 'overview' }"
+         @click="tab = 'overview'">Overview</div>
+    <div class="wf-tab" :class="{ active: tab === 'financials' }"
+         @click="tab = 'financials'"
+         hx-get="/hx/ticker/{{ symbol }}/financials"
+         hx-target="#tab-content"
+         hx-trigger="click once"
+         hx-swap="innerHTML">Financials</div>
+    <div class="wf-tab" :class="{ active: tab === 'news' }"
+         @click="tab = 'news'"
+         hx-get="/hx/ticker/{{ symbol }}/news"
+         hx-target="#tab-content"
+         hx-trigger="click once"
+         hx-swap="innerHTML">News</div>
+    <div class="wf-tab" :class="{ active: tab === 'insiders' }"
+         @click="tab = 'insiders'"
+         hx-get="/hx/ticker/{{ symbol }}/insiders"
+         hx-target="#tab-content"
+         hx-trigger="click once"
+         hx-swap="innerHTML">Insiders</div>
+    <div class="wf-tab" :class="{ active: tab === 'holders' }"
+         @click="tab = 'holders'"
+         hx-get="/hx/ticker/{{ symbol }}/holders"
+         hx-target="#tab-content"
+         hx-trigger="click once"
+         hx-swap="innerHTML">Holders</div>
+    <div class="wf-tab" :class="{ active: tab === 'earnings' }"
+         @click="tab = 'earnings'"
+         hx-get="/hx/ticker/{{ symbol }}/earnings"
+         hx-target="#tab-content"
+         hx-trigger="click once"
+         hx-swap="innerHTML">Earnings</div>
+    <div class="wf-tab" :class="{ active: tab === 'predictions' }"
+         @click="tab = 'predictions'"
+         hx-get="/hx/ticker/{{ symbol }}/predictions"
+         hx-target="#tab-content"
+         hx-trigger="click once"
+         hx-swap="innerHTML">Predictions</div>
+  </div>
+
+  <!-- ── Tab Content ─────────────────────────────────────────────────── -->
+  <div id="tab-content">
+    <!-- Overview (eager) -->
+    <div class="grid-2">
+      <!-- Price Chart -->
+      <div class="card">
+        <div class="card-title">Price History</div>
+        <div class="period-selector" x-data="{ period: '1Y' }">
+          {% for p in ['1M','3M','6M','1Y','5Y'] %}
+          <button class="period-btn" :class="{ active: period === '{{ p }}' }"
+                  @click="period = '{{ p }}'; loadPriceChart('{{ symbol }}', '{{ p }}')">{{ p }}</button>
+          {% endfor %}
+        </div>
+        <div id="price-chart" style="height:280px;"></div>
+      </div>
+
+      <!-- Analyst Consensus -->
+      <div class="card">
+        <div class="card-title">Analyst Consensus</div>
+        <div class="analyst-consensus-header">
+          <div class="consensus-rating {% if analysts.consensus in ['Strong Buy','Buy'] %}positive{% elif analysts.consensus in ['Sell','Strong Sell'] %}negative{% endif %}">
+            {{ analysts.consensus }}
+          </div>
+          <div class="consensus-meta">Based on {{ analysts.count }} analysts</div>
+        </div>
+        <div class="target-prices">
+          <div class="target">
+            <div class="target-value negative">${{ analysts.low }}</div>
+            <div class="target-label">Low Target</div>
+          </div>
+          <div class="target">
+            <div class="target-value">${{ analysts.avg }}</div>
+            <div class="target-label">Avg Target</div>
+          </div>
+          <div class="target">
+            <div class="target-value positive">${{ analysts.high }}</div>
+            <div class="target-label">High Target</div>
+          </div>
+        </div>
+        {% if analysts.ratings %}
+        <table class="wf-table" style="font-size:12px;">
+          <thead><tr><th>Date</th><th>Analyst</th><th>Action</th><th>Rating</th><th>Target</th></tr></thead>
+          <tbody>
+          {% for r in analysts.ratings[:5] %}
+            <tr>
+              <td>{{ r.date }}</td>
+              <td>{{ r.firm }}</td>
+              <td>{{ r.action }}</td>
+              <td><span class="badge badge-{{ 'buy' if r.rating in ['Buy','Strong Buy','Overweight'] else ('sell' if r.rating in ['Sell','Strong Sell','Underweight'] else 'hold') }}">{{ r.rating }}</span></td>
+              <td>${{ r.target }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Comparable Companies -->
+    {% if peers %}
+    <div class="card">
+      <div class="card-title">Comparable Companies</div>
+      <table class="wf-table">
+        <thead><tr><th>Ticker</th><th>Company</th><th>Price</th><th>P/E</th><th>Mkt Cap</th><th>YTD</th></tr></thead>
+        <tbody>
+        {% for p in peers %}
+          <tr>
+            <td class="ticker"><a href="/ticker/{{ p.symbol }}">{{ p.symbol }}</a></td>
+            <td>{{ p.name }}</td>
+            <td>${{ "%.2f"|format(p.price) }}</td>
+            <td>{{ p.pe }}</td>
+            <td>{{ p.mkt_cap }}</td>
+            <td class="{% if p.ytd >= 0 %}positive{% else %}negative{% endif %}">
+              {% if p.ytd >= 0 %}+{% endif %}{{ "%.1f"|format(p.ytd) }}%
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── Plotly chart loader ──────────────────────────────────────────── -->
+<script>
+async function loadPriceChart(symbol, period) {
+  const resp = await fetch(`/api/chart/${symbol}/price?period=${period}`);
+  const spec = await resp.json();
+  Plotly.newPlot('price-chart', spec.data, spec.layout, {responsive: true, displayModeBar: false});
+}
+// Load default chart on page load
+document.addEventListener('DOMContentLoaded', () => loadPriceChart('{{ symbol }}', '1Y'));
+</script>
+{% endblock %}

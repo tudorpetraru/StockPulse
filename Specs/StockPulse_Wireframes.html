@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockPulse — Wireframes</title>
+<style>
+  :root {
+    --navy: #1B2A4A; --navy-light: #2C3E6B;
+    --blue: #1976D2; --blue-light: #E3F2FD; --blue-bg: #F0F7FF;
+    --green: #2E7D32; --green-light: #E8F5E9;
+    --red: #C62828; --red-light: #FFEBEE;
+    --amber: #F57F17; --amber-light: #FFF8E1;
+    --purple: #7B1FA2; --purple-light: #F3E5F5;
+    --gray-50: #FAFAFA; --gray-100: #F5F5F5; --gray-200: #EEEEEE;
+    --gray-300: #E0E0E0; --gray-400: #BDBDBD; --gray-500: #9E9E9E;
+    --gray-600: #757575; --gray-700: #616161; --gray-800: #424242;
+    --text: #212121; --bg: #F8F9FA;
+    --radius: 8px; --radius-sm: 4px; --radius-lg: 12px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08); --shadow-md: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color:var(--text); background:#E8EBF0; line-height:1.5; }
+
+  /* Page selector */
+  .page-nav { position:fixed; top:0; left:0; right:0; background:var(--navy); z-index:1000; padding:12px 24px; display:flex; align-items:center; gap:16px; box-shadow:0 2px 8px rgba(0,0,0,0.2); }
+  .page-nav h1 { color:white; font-size:16px; font-weight:700; margin-right:8px; }
+  .page-nav .divider { width:1px; height:24px; background:rgba(255,255,255,0.2); }
+  .page-btn { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:rgba(255,255,255,0.8); padding:6px 16px; border-radius:var(--radius-sm); font-size:13px; cursor:pointer; transition:all 0.15s; }
+  .page-btn:hover { background:rgba(255,255,255,0.2); color:white; }
+  .page-btn.active { background:var(--blue); border-color:var(--blue); color:white; font-weight:600; }
+
+  .wireframe-container { padding:72px 24px 48px; max-width:1400px; margin:0 auto; }
+  .wireframe-label { text-align:center; font-size:13px; color:var(--gray-600); margin-bottom:16px; }
+  .wireframe-label strong { color:var(--navy); font-size:15px; }
+
+  /* Wireframe frame */
+  .wf { display:none; background:white; border-radius:var(--radius-lg); box-shadow:var(--shadow-md); overflow:hidden; border:1px solid var(--gray-200); }
+  .wf.active { display:block; }
+
+  /* Shared wireframe nav */
+  .wf-nav { display:flex; align-items:center; background:var(--navy); padding:0 20px; height:48px; }
+  .wf-nav .logo { color:white; font-weight:700; font-size:15px; padding-right:20px; border-right:1px solid rgba(255,255,255,0.15); margin-right:8px; }
+  .wf-nav .nav-link { color:rgba(255,255,255,0.6); font-size:13px; padding:14px 14px; text-decoration:none; cursor:default; }
+  .wf-nav .nav-link.active { color:white; border-bottom:2px solid white; }
+  .wf-nav .search { margin-left:auto; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.15); border-radius:var(--radius-sm); padding:5px 12px; color:rgba(255,255,255,0.5); font-size:12px; width:200px; outline:none; }
+
+  /* Content area */
+  .wf-body { padding:24px; background:var(--bg); min-height:600px; }
+
+  /* Card component */
+  .card { background:white; border:1px solid var(--gray-200); border-radius:var(--radius); padding:20px; margin-bottom:16px; box-shadow:var(--shadow); }
+  .card-title { font-size:13px; font-weight:700; color:var(--gray-500); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; }
+
+  /* Grid */
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+  .grid-4 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:16px; }
+  .grid-6 { display:grid; grid-template-columns:repeat(6, 1fr); gap:12px; }
+  .grid-sidebar { display:grid; grid-template-columns:220px 1fr; gap:20px; }
+
+  /* Stat card */
+  .stat { text-align:center; }
+  .stat-value { font-size:24px; font-weight:700; color:var(--navy); }
+  .stat-label { font-size:12px; color:var(--gray-500); margin-top:4px; }
+  .stat-change { font-size:13px; margin-top:2px; }
+  .stat-change.up { color:var(--green); }
+  .stat-change.down { color:var(--red); }
+
+  /* Metric cell */
+  .metric { padding:10px; background:var(--gray-50); border-radius:var(--radius-sm); border:1px solid var(--gray-200); }
+  .metric-label { font-size:11px; color:var(--gray-500); text-transform:uppercase; }
+  .metric-value { font-size:15px; font-weight:600; color:var(--navy); margin-top:2px; }
+
+  /* Table */
+  .wf-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .wf-table th { background:var(--gray-100); padding:10px 12px; text-align:left; font-size:12px; font-weight:600; color:var(--gray-600); text-transform:uppercase; letter-spacing:0.3px; border-bottom:2px solid var(--gray-200); }
+  .wf-table td { padding:10px 12px; border-bottom:1px solid var(--gray-100); }
+  .wf-table tr:hover td { background:var(--blue-bg); }
+  .wf-table .ticker { color:var(--blue); font-weight:600; cursor:pointer; }
+  .wf-table .positive { color:var(--green); font-weight:500; }
+  .wf-table .negative { color:var(--red); font-weight:500; }
+
+  /* Tabs */
+  .wf-tabs { display:flex; border-bottom:2px solid var(--gray-200); margin-bottom:20px; }
+  .wf-tab { padding:10px 20px; font-size:13px; color:var(--gray-500); cursor:default; border-bottom:2px solid transparent; margin-bottom:-2px; }
+  .wf-tab.active { color:var(--blue); border-bottom-color:var(--blue); font-weight:600; }
+
+  /* Chart placeholder */
+  .chart-placeholder { background:var(--gray-50); border:2px dashed var(--gray-300); border-radius:var(--radius); display:flex; align-items:center; justify-content:center; color:var(--gray-400); font-size:14px; padding:20px; flex-direction:column; gap:8px; }
+  .chart-placeholder .chart-icon { font-size:32px; }
+
+  /* Buttons */
+  .btn { display:inline-flex; align-items:center; gap:6px; padding:7px 16px; border-radius:var(--radius-sm); font-size:13px; font-weight:500; border:1px solid var(--gray-300); background:white; color:var(--gray-700); cursor:default; }
+  .btn-primary { background:var(--blue); color:white; border-color:var(--blue); }
+  .btn-sm { padding:4px 10px; font-size:12px; }
+  .btn-group { display:flex; gap:4px; }
+
+  /* Input */
+  .wf-input { border:1px solid var(--gray-300); border-radius:var(--radius-sm); padding:7px 12px; font-size:13px; color:var(--text); background:white; outline:none; width:100%; }
+
+  /* Badge */
+  .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+  .badge-buy { background:var(--green-light); color:var(--green); }
+  .badge-sell { background:var(--red-light); color:var(--red); }
+  .badge-hold { background:var(--amber-light); color:var(--amber); }
+
+  /* Sidebar */
+  .sidebar { background:white; border-right:1px solid var(--gray-200); border-radius:var(--radius); padding:16px; }
+  .sidebar-title { font-size:11px; font-weight:700; text-transform:uppercase; color:var(--gray-400); letter-spacing:0.5px; margin-bottom:8px; }
+  .sidebar-item { padding:8px 12px; font-size:13px; color:var(--gray-600); border-radius:var(--radius-sm); margin-bottom:2px; cursor:default; }
+  .sidebar-item.active { background:var(--blue-light); color:var(--blue); font-weight:600; }
+  .sidebar-divider { height:1px; background:var(--gray-200); margin:12px 0; }
+
+  /* News item */
+  .news-item { padding:12px 0; border-bottom:1px solid var(--gray-100); }
+  .news-item:last-child { border-bottom:none; }
+  .news-title { font-size:14px; font-weight:500; color:var(--navy); }
+  .news-meta { font-size:12px; color:var(--gray-500); margin-top:4px; }
+  .news-meta .source { font-weight:600; }
+
+  /* Filter panel */
+  .filter-group { margin-bottom:16px; }
+  .filter-label { font-size:12px; font-weight:600; color:var(--gray-600); margin-bottom:6px; }
+  .filter-row { display:flex; gap:8px; align-items:center; }
+  .filter-row .wf-input { width:100px; }
+  .filter-row span { font-size:12px; color:var(--gray-500); }
+
+  /* Company header */
+  .company-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
+  .company-name { font-size:22px; font-weight:700; color:var(--navy); }
+  .company-sub { font-size:13px; color:var(--gray-500); margin-top:2px; }
+  .company-price { text-align:right; }
+  .company-price .price { font-size:28px; font-weight:700; color:var(--navy); }
+  .company-price .change { font-size:15px; margin-top:2px; }
+
+  /* Sparkline */
+  .sparkline { width:80px; height:24px; background:linear-gradient(90deg, var(--green-light) 0%, var(--green-light) 60%, transparent 60%); border-radius:2px; border:1px solid var(--gray-200); }
+
+  /* Annotation */
+  .annotation { background:var(--amber-light); border:1px solid #FFE082; border-radius:var(--radius-sm); padding:8px 12px; font-size:12px; color:var(--amber); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+  .annotation::before { content:'💡'; }
+
+  /* Modal wireframe */
+  .modal-overlay { position:relative; background:rgba(0,0,0,0.04); border-radius:var(--radius); padding:40px; display:flex; align-items:center; justify-content:center; min-height:200px; }
+  .modal { background:white; border-radius:var(--radius); box-shadow:var(--shadow-md); padding:24px; width:400px; border:1px solid var(--gray-200); }
+  .modal h3 { font-size:16px; margin-bottom:16px; color:var(--navy); }
+  .modal .form-group { margin-bottom:12px; }
+  .modal .form-group label { display:block; font-size:12px; font-weight:600; color:var(--gray-600); margin-bottom:4px; }
+  .modal .actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+
+  /* Period selector */
+  .period-selector { display:flex; gap:4px; margin-bottom:12px; }
+  .period-btn { padding:4px 12px; font-size:12px; border-radius:var(--radius-sm); background:var(--gray-100); color:var(--gray-600); border:1px solid var(--gray-200); cursor:default; }
+  .period-btn.active { background:var(--blue); color:white; border-color:var(--blue); }
+
+  /* Responsive note */
+  @media (max-width: 900px) {
+    .grid-4 { grid-template-columns: 1fr 1fr; }
+    .grid-6 { grid-template-columns: repeat(3, 1fr); }
+    .grid-sidebar { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Page Selector -->
+<div class="page-nav">
+  <h1>StockPulse Wireframes</h1>
+  <div class="divider"></div>
+  <button class="page-btn active" onclick="show('dashboard')">Dashboard</button>
+  <button class="page-btn" onclick="show('screener')">Screener</button>
+  <button class="page-btn" onclick="show('ticker')">Ticker View</button>
+  <button class="page-btn" onclick="show('portfolio')">Portfolio</button>
+  <button class="page-btn" onclick="show('watchlist')">Watchlist</button>
+  <button class="page-btn" onclick="show('news')">News</button>
+  <button class="page-btn" onclick="show('modal')">Add Position</button>
+</div>
+
+<div class="wireframe-container">
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- DASHBOARD -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="wireframe-label"><strong>Dashboard</strong> — Home / Overview page (route: /)</div>
+<div id="wf-dashboard" class="wf active">
+  <div class="wf-nav">
+    <div class="logo">StockPulse</div>
+    <span class="nav-link active">Dashboard</span>
+    <span class="nav-link">Screener</span>
+    <span class="nav-link">Portfolio</span>
+    <span class="nav-link">Watchlist</span>
+    <span class="nav-link">News</span>
+    <input class="search" placeholder="Search ticker... (Ctrl+K)" readonly>
+  </div>
+  <div class="wf-body">
+    <div class="annotation">Welcome back! Portfolio data refreshed 3 minutes ago. Next refresh in 12 minutes.</div>
+
+    <!-- Portfolio Summary -->
+    <div class="card">
+      <div class="card-title">Portfolio Summary</div>
+      <div class="grid-4">
+        <div class="stat">
+          <div class="stat-value">$127,450</div>
+          <div class="stat-label">Total Value</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">+$1,234</div>
+          <div class="stat-label">Today's P&L</div>
+          <div class="stat-change up">+0.98%</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">+$12,890</div>
+          <div class="stat-label">Total P&L</div>
+          <div class="stat-change up">+11.24%</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">14</div>
+          <div class="stat-label">Positions</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <!-- Watchlist Movers -->
+      <div class="card">
+        <div class="card-title">Watchlist Movers</div>
+        <table class="wf-table">
+          <thead><tr><th>Ticker</th><th>Price</th><th>Change</th></tr></thead>
+          <tbody>
+            <tr><td class="ticker">NVDA</td><td>$142.56</td><td class="positive">+4.2%</td></tr>
+            <tr><td class="ticker">TSLA</td><td>$267.89</td><td class="positive">+2.8%</td></tr>
+            <tr><td class="ticker">INTC</td><td>$31.45</td><td class="negative">-3.1%</td></tr>
+            <tr><td class="ticker">BA</td><td>$178.23</td><td class="negative">-2.4%</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Recent News -->
+      <div class="card">
+        <div class="card-title">Recent News</div>
+        <div class="news-item">
+          <div class="news-title">NVIDIA Reports Record Q4 Revenue, Beats Estimates</div>
+          <div class="news-meta"><span class="source">Reuters</span> · 2 hours ago · <span style="color:var(--blue)">NVDA</span></div>
+        </div>
+        <div class="news-item">
+          <div class="news-title">Fed Minutes Show Officials Divided on Rate Path</div>
+          <div class="news-meta"><span class="source">Bloomberg</span> · 4 hours ago · <span style="color:var(--blue)">Market</span></div>
+        </div>
+        <div class="news-item">
+          <div class="news-title">Apple Expands AI Features in Latest iOS Update</div>
+          <div class="news-meta"><span class="source">CNBC</span> · 5 hours ago · <span style="color:var(--blue)">AAPL</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Market Snapshot -->
+    <div class="card">
+      <div class="card-title">Market Snapshot</div>
+      <div class="grid-3">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0;">
+          <div><div style="font-weight:600; font-size:14px;">S&P 500</div><div style="font-size:12px; color:var(--gray-500);">5,987.42</div></div>
+          <div style="text-align:right;"><div class="positive" style="font-size:14px; font-weight:600;">+0.67%</div><div class="sparkline"></div></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0;">
+          <div><div style="font-weight:600; font-size:14px;">NASDAQ</div><div style="font-size:12px; color:var(--gray-500);">19,234.11</div></div>
+          <div style="text-align:right;"><div class="positive" style="font-size:14px; font-weight:600;">+1.12%</div><div class="sparkline"></div></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0;">
+          <div><div style="font-weight:600; font-size:14px;">DOW</div><div style="font-size:12px; color:var(--gray-500);">43,892.56</div></div>
+          <div style="text-align:right;"><div class="negative" style="font-size:14px; font-weight:600;">-0.23%</div><div class="sparkline" style="background:linear-gradient(90deg, var(--red-light) 0%, var(--red-light) 40%, transparent 40%);"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- SCREENER -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="wf-screener" class="wf">
+  <div class="wf-nav">
+    <div class="logo">StockPulse</div>
+    <span class="nav-link">Dashboard</span>
+    <span class="nav-link active">Screener</span>
+    <span class="nav-link">Portfolio</span>
+    <span class="nav-link">Watchlist</span>
+    <span class="nav-link">News</span>
+    <input class="search" placeholder="Search ticker... (Ctrl+K)" readonly>
+  </div>
+  <div class="wf-body">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h2 style="font-size:20px; color:var(--navy);">Stock Screener</h2>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <select class="wf-input" style="width:180px;"><option>Load Preset...</option><option>Value Stocks</option><option>Growth Tech</option><option>Dividend Kings</option></select>
+        <button class="btn btn-sm">Save Preset</button>
+        <button class="btn btn-sm">Reset</button>
+      </div>
+    </div>
+
+    <div class="grid-sidebar">
+      <!-- Filter Panel -->
+      <div class="card" style="padding:16px;">
+        <div class="card-title" style="margin-bottom:16px;">Filters</div>
+
+        <div class="filter-group">
+          <div class="filter-label">Valuation</div>
+          <div class="filter-row"><span>P/E</span><input class="wf-input" placeholder="Min"><span>to</span><input class="wf-input" placeholder="Max"></div>
+          <div class="filter-row" style="margin-top:6px;"><span>Fwd P/E</span><input class="wf-input" placeholder="Min"><span>to</span><input class="wf-input" placeholder="Max"></div>
+          <div class="filter-row" style="margin-top:6px;"><span>P/B</span><input class="wf-input" placeholder="Min"><span>to</span><input class="wf-input" placeholder="Max"></div>
+        </div>
+
+        <div class="filter-group">
+          <div class="filter-label">Size</div>
+          <div class="filter-row"><span>Mkt Cap</span><select class="wf-input" style="width:100%;"><option>Any</option><option>Mega ($200B+)</option><option>Large ($10B+)</option><option>Mid ($2B-10B)</option><option>Small ($300M-2B)</option></select></div>
+        </div>
+
+        <div class="filter-group">
+          <div class="filter-label">Profitability</div>
+          <div class="filter-row"><span>EPS</span><input class="wf-input" placeholder="Min"><span>to</span><input class="wf-input" placeholder="Max"></div>
+          <div class="filter-row" style="margin-top:6px;"><span>ROE %</span><input class="wf-input" placeholder="Min"><span>to</span><input class="wf-input" placeholder="Max"></div>
+        </div>
+
+        <div class="filter-group">
+          <div class="filter-label">Technical</div>
+          <div class="filter-row"><span>RSI</span><input class="wf-input" placeholder="Min"><span>to</span><input class="wf-input" placeholder="Max"></div>
+          <div class="filter-row" style="margin-top:6px;"><span>Price vs SMA50</span><select class="wf-input" style="width:100%;"><option>Any</option><option>Above SMA50</option><option>Below SMA50</option></select></div>
+        </div>
+
+        <div class="filter-group">
+          <div class="filter-label">Ownership</div>
+          <div class="filter-row"><span>Insider %</span><input class="wf-input" placeholder="Min"><span>to</span><input class="wf-input" placeholder="Max"></div>
+        </div>
+
+        <button class="btn btn-primary" style="width:100%; justify-content:center; margin-top:8px;">Screen Stocks</button>
+      </div>
+
+      <!-- Results -->
+      <div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <span style="font-size:13px; color:var(--gray-600);">Showing 1-25 of 142 results</span>
+          <button class="btn btn-sm">Export CSV ↓</button>
+        </div>
+        <div class="card" style="padding:0; overflow:hidden;">
+          <table class="wf-table">
+            <thead>
+              <tr>
+                <th>Ticker ↕</th><th>Company</th><th>Price</th><th>Chg%</th>
+                <th>Mkt Cap ↕</th><th>P/E ↕</th><th>EPS</th><th>Vol</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="ticker">AAPL</td><td>Apple Inc.</td><td>$189.84</td><td class="positive">+1.2%</td><td>$2.94T</td><td>29.4</td><td>$6.46</td><td>52.3M</td></tr>
+              <tr><td class="ticker">MSFT</td><td>Microsoft Corp.</td><td>$415.67</td><td class="positive">+0.8%</td><td>$3.09T</td><td>35.2</td><td>$11.80</td><td>21.7M</td></tr>
+              <tr><td class="ticker">GOOGL</td><td>Alphabet Inc.</td><td>$175.23</td><td class="negative">-0.3%</td><td>$2.16T</td><td>23.1</td><td>$7.59</td><td>18.9M</td></tr>
+              <tr><td class="ticker">AMZN</td><td>Amazon.com Inc.</td><td>$198.45</td><td class="positive">+1.5%</td><td>$2.06T</td><td>42.8</td><td>$4.64</td><td>34.1M</td></tr>
+              <tr><td class="ticker">META</td><td>Meta Platforms</td><td>$612.30</td><td class="positive">+2.1%</td><td>$1.56T</td><td>27.6</td><td>$22.18</td><td>15.4M</td></tr>
+              <tr><td class="ticker">NVDA</td><td>NVIDIA Corp.</td><td>$142.56</td><td class="positive">+4.2%</td><td>$3.49T</td><td>55.3</td><td>$2.58</td><td>287M</td></tr>
+              <tr><td class="ticker">JPM</td><td>JPMorgan Chase</td><td>$248.90</td><td class="positive">+0.4%</td><td>$706B</td><td>12.8</td><td>$19.44</td><td>8.2M</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="display:flex; justify-content:center; gap:4px; margin-top:12px;">
+          <button class="btn btn-sm" style="background:var(--blue); color:white; border-color:var(--blue);">1</button>
+          <button class="btn btn-sm">2</button>
+          <button class="btn btn-sm">3</button>
+          <button class="btn btn-sm">4</button>
+          <button class="btn btn-sm">5</button>
+          <button class="btn btn-sm">→</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- TICKER VIEW -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="wf-ticker" class="wf">
+  <div class="wf-nav">
+    <div class="logo">StockPulse</div>
+    <span class="nav-link">Dashboard</span>
+    <span class="nav-link">Screener</span>
+    <span class="nav-link">Portfolio</span>
+    <span class="nav-link">Watchlist</span>
+    <span class="nav-link">News</span>
+    <input class="search" placeholder="Search ticker... (Ctrl+K)" readonly>
+  </div>
+  <div class="wf-body">
+    <!-- Company Header -->
+    <div class="card">
+      <div class="company-header">
+        <div>
+          <div class="company-name">NVIDIA Corporation <span style="font-size:14px; color:var(--gray-500); font-weight:400;">NVDA</span></div>
+          <div class="company-sub">Technology · Semiconductors · NASDAQ · Last updated 2 min ago</div>
+          <div style="margin-top:8px; display:flex; gap:8px;">
+            <button class="btn btn-sm btn-primary">+ Add to Watchlist</button>
+            <button class="btn btn-sm">Add Position</button>
+            <button class="btn btn-sm">Refresh ↻</button>
+          </div>
+        </div>
+        <div class="company-price">
+          <div class="price">$142.56</div>
+          <div class="change positive">+$5.74 (+4.20%) today</div>
+        </div>
+      </div>
+
+      <!-- Key Metrics Grid -->
+      <div class="grid-6">
+        <div class="metric"><div class="metric-label">P/E</div><div class="metric-value">55.3</div></div>
+        <div class="metric"><div class="metric-label">Fwd P/E</div><div class="metric-value">32.1</div></div>
+        <div class="metric"><div class="metric-label">PEG</div><div class="metric-value">0.84</div></div>
+        <div class="metric"><div class="metric-label">Mkt Cap</div><div class="metric-value">$3.49T</div></div>
+        <div class="metric"><div class="metric-label">EV/EBITDA</div><div class="metric-value">47.2</div></div>
+        <div class="metric"><div class="metric-label">Beta</div><div class="metric-value">1.67</div></div>
+        <div class="metric"><div class="metric-label">P/S</div><div class="metric-value">28.4</div></div>
+        <div class="metric"><div class="metric-label">P/B</div><div class="metric-value">42.1</div></div>
+        <div class="metric"><div class="metric-label">ROE</div><div class="metric-value">127.8%</div></div>
+        <div class="metric"><div class="metric-label">Profit Margin</div><div class="metric-value">55.7%</div></div>
+        <div class="metric"><div class="metric-label">Debt/Equity</div><div class="metric-value">0.41</div></div>
+        <div class="metric"><div class="metric-label">Insider Own</div><div class="metric-value">4.2%</div></div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="wf-tabs">
+      <div class="wf-tab active">Overview</div>
+      <div class="wf-tab">Financials</div>
+      <div class="wf-tab">News</div>
+      <div class="wf-tab">Insiders</div>
+      <div class="wf-tab">Holders</div>
+      <div class="wf-tab">Earnings</div>
+    </div>
+
+    <!-- Overview Tab Content -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Price History</div>
+        <div class="period-selector">
+          <div class="period-btn">1M</div>
+          <div class="period-btn">3M</div>
+          <div class="period-btn">6M</div>
+          <div class="period-btn active">1Y</div>
+          <div class="period-btn">5Y</div>
+        </div>
+        <div class="chart-placeholder" style="height:240px;">
+          <div class="chart-icon">📈</div>
+          <div>Plotly OHLCV Chart</div>
+          <div style="font-size:12px;">SMA 50 (blue line) · SMA 200 (red line) · Volume bars</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Analyst Consensus</div>
+        <div style="text-align:center; margin-bottom:16px;">
+          <div style="font-size:32px; font-weight:700; color:var(--green);">Strong Buy</div>
+          <div style="font-size:13px; color:var(--gray-500); margin-top:4px;">Based on 42 analysts</div>
+        </div>
+        <div style="display:flex; gap:16px; justify-content:center; margin-bottom:16px;">
+          <div style="text-align:center;"><div style="font-size:20px; font-weight:700; color:var(--red);">$98</div><div style="font-size:11px; color:var(--gray-500);">Low Target</div></div>
+          <div style="text-align:center;"><div style="font-size:20px; font-weight:700; color:var(--navy);">$165</div><div style="font-size:11px; color:var(--gray-500);">Avg Target</div></div>
+          <div style="text-align:center;"><div style="font-size:20px; font-weight:700; color:var(--green);">$220</div><div style="font-size:11px; color:var(--gray-500);">High Target</div></div>
+        </div>
+        <table class="wf-table" style="font-size:12px;">
+          <thead><tr><th>Date</th><th>Analyst</th><th>Action</th><th>Rating</th><th>Target</th></tr></thead>
+          <tbody>
+            <tr><td>Feb 10</td><td>Goldman Sachs</td><td>Reiterate</td><td><span class="badge badge-buy">Buy</span></td><td>$185</td></tr>
+            <tr><td>Feb 8</td><td>Morgan Stanley</td><td>Upgrade</td><td><span class="badge badge-buy">Buy</span></td><td>$200</td></tr>
+            <tr><td>Feb 5</td><td>UBS</td><td>Initiate</td><td><span class="badge badge-hold">Hold</span></td><td>$150</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Peers -->
+    <div class="card">
+      <div class="card-title">Comparable Companies</div>
+      <table class="wf-table">
+        <thead><tr><th>Ticker</th><th>Company</th><th>Price</th><th>P/E</th><th>Mkt Cap</th><th>YTD</th></tr></thead>
+        <tbody>
+          <tr><td class="ticker">AMD</td><td>Advanced Micro Devices</td><td>$168.45</td><td>42.1</td><td>$272B</td><td class="positive">+12.3%</td></tr>
+          <tr><td class="ticker">INTC</td><td>Intel Corporation</td><td>$31.45</td><td>N/A</td><td>$134B</td><td class="negative">-18.7%</td></tr>
+          <tr><td class="ticker">AVGO</td><td>Broadcom Inc.</td><td>$189.23</td><td>36.8</td><td>$878B</td><td class="positive">+8.9%</td></tr>
+          <tr><td class="ticker">TSM</td><td>Taiwan Semiconductor</td><td>$178.90</td><td>27.4</td><td>$927B</td><td class="positive">+5.1%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- PORTFOLIO -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="wf-portfolio" class="wf">
+  <div class="wf-nav">
+    <div class="logo">StockPulse</div>
+    <span class="nav-link">Dashboard</span>
+    <span class="nav-link">Screener</span>
+    <span class="nav-link active">Portfolio</span>
+    <span class="nav-link">Watchlist</span>
+    <span class="nav-link">News</span>
+    <input class="search" placeholder="Search ticker... (Ctrl+K)" readonly>
+  </div>
+  <div class="wf-body">
+    <div class="grid-sidebar">
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <div class="sidebar-title">Portfolios</div>
+        <div class="sidebar-item active">Main Portfolio</div>
+        <div class="sidebar-item">IRA Account</div>
+        <div class="sidebar-item" style="color:var(--blue); font-size:12px; margin-top:8px;">+ New Portfolio</div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-title">Actions</div>
+        <div class="sidebar-item">+ Add Position</div>
+        <div class="sidebar-item">↓ Export CSV</div>
+        <div class="sidebar-item">⟳ Refresh Prices</div>
+        <div class="sidebar-item">💾 Backup DB</div>
+      </div>
+
+      <!-- Main Content -->
+      <div>
+        <h2 style="font-size:20px; color:var(--navy); margin-bottom:16px;">Main Portfolio</h2>
+
+        <!-- Summary Stats -->
+        <div class="card">
+          <div class="grid-4">
+            <div class="stat">
+              <div class="stat-value">$127,450</div>
+              <div class="stat-label">Total Value</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value positive">+$12,890</div>
+              <div class="stat-label">Total P&L</div>
+              <div class="stat-change up">+11.24%</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value positive">+$1,234</div>
+              <div class="stat-label">Today</div>
+              <div class="stat-change up">+0.98%</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value">$114,560</div>
+              <div class="stat-label">Cost Basis</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">Sector Allocation</div>
+            <div class="chart-placeholder" style="height:200px;">
+              <div class="chart-icon">🍩</div>
+              <div>Plotly Donut Chart</div>
+              <div style="font-size:12px;">Tech 45% · Health 18% · Finance 15% · Consumer 12% · Energy 10%</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Position Size</div>
+            <div class="chart-placeholder" style="height:200px;">
+              <div class="chart-icon">📊</div>
+              <div>Plotly Horizontal Bar Chart</div>
+              <div style="font-size:12px;">NVDA 22% · AAPL 18% · MSFT 15% · GOOGL 12% · ...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Positions Table -->
+        <div class="card" style="padding:0; overflow:hidden;">
+          <table class="wf-table">
+            <thead>
+              <tr>
+                <th>Ticker</th><th>Shares</th><th>Avg Cost</th><th>Current</th>
+                <th>Value</th><th>P&L $</th><th>P&L %</th><th>Day Chg</th><th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="ticker">NVDA</td><td>200</td><td>$98.30</td><td>$142.56</td><td>$28,512</td><td class="positive">+$8,852</td><td class="positive">+45.0%</td><td class="positive">+4.2%</td><td><button class="btn btn-sm">Edit</button></td></tr>
+              <tr><td class="ticker">AAPL</td><td>120</td><td>$165.40</td><td>$189.84</td><td>$22,781</td><td class="positive">+$2,933</td><td class="positive">+14.8%</td><td class="positive">+1.2%</td><td><button class="btn btn-sm">Edit</button></td></tr>
+              <tr><td class="ticker">MSFT</td><td>45</td><td>$380.20</td><td>$415.67</td><td>$18,705</td><td class="positive">+$1,596</td><td class="positive">+9.3%</td><td class="positive">+0.8%</td><td><button class="btn btn-sm">Edit</button></td></tr>
+              <tr><td class="ticker">GOOGL</td><td>85</td><td>$158.10</td><td>$175.23</td><td>$14,895</td><td class="positive">+$1,456</td><td class="positive">+10.8%</td><td class="negative">-0.3%</td><td><button class="btn btn-sm">Edit</button></td></tr>
+              <tr><td class="ticker">JPM</td><td>50</td><td>$205.60</td><td>$248.90</td><td>$12,445</td><td class="positive">+$2,165</td><td class="positive">+21.1%</td><td class="positive">+0.4%</td><td><button class="btn btn-sm">Edit</button></td></tr>
+              <tr style="background:var(--gray-50);"><td colspan="4" style="font-weight:700; text-align:right;">Total</td><td style="font-weight:700;">$127,450</td><td class="positive" style="font-weight:700;">+$12,890</td><td class="positive" style="font-weight:700;">+11.24%</td><td class="positive" style="font-weight:700;">+0.98%</td><td></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- WATCHLIST -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="wf-watchlist" class="wf">
+  <div class="wf-nav">
+    <div class="logo">StockPulse</div>
+    <span class="nav-link">Dashboard</span>
+    <span class="nav-link">Screener</span>
+    <span class="nav-link">Portfolio</span>
+    <span class="nav-link active">Watchlist</span>
+    <span class="nav-link">News</span>
+    <input class="search" placeholder="Search ticker... (Ctrl+K)" readonly>
+  </div>
+  <div class="wf-body">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h2 style="font-size:20px; color:var(--navy);">Watchlists</h2>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <span style="font-size:12px; color:var(--gray-500);">Last refreshed: 3 min ago</span>
+        <button class="btn btn-sm">⟳ Refresh</button>
+      </div>
+    </div>
+
+    <!-- Watchlist Tabs -->
+    <div class="wf-tabs">
+      <div class="wf-tab active">Tech Growth (8)</div>
+      <div class="wf-tab">Dividend Picks (5)</div>
+      <div class="wf-tab">Speculative (3)</div>
+      <div class="wf-tab" style="color:var(--blue);">+ New List</div>
+    </div>
+
+    <!-- Add ticker -->
+    <div style="display:flex; gap:8px; margin-bottom:16px;">
+      <input class="wf-input" placeholder="Add ticker (e.g., TSLA)" style="max-width:250px;">
+      <button class="btn btn-primary btn-sm">+ Add</button>
+    </div>
+
+    <!-- Watchlist Table -->
+    <div class="card" style="padding:0; overflow:hidden;">
+      <table class="wf-table">
+        <thead>
+          <tr>
+            <th>Ticker</th><th>Company</th><th>Price</th><th>Change</th>
+            <th>52W Range</th><th>P/E</th><th>Chart</th><th>Notes</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="ticker">NVDA</td><td>NVIDIA Corp.</td><td>$142.56</td><td class="positive">+4.2%</td><td style="font-size:12px;">$60.70 — $153.13</td><td>55.3</td><td><div class="sparkline"></div></td><td style="font-size:12px; color:var(--gray-500);">AI leader, watch earnings</td><td><button class="btn btn-sm" style="color:var(--red);">✕</button></td></tr>
+          <tr><td class="ticker">TSLA</td><td>Tesla Inc.</td><td>$267.89</td><td class="positive">+2.8%</td><td style="font-size:12px;">$138.80 — $299.29</td><td>78.1</td><td><div class="sparkline"></div></td><td style="font-size:12px; color:var(--gray-500);">Buy below $250</td><td><button class="btn btn-sm" style="color:var(--red);">✕</button></td></tr>
+          <tr><td class="ticker">PLTR</td><td>Palantir Tech.</td><td>$82.34</td><td class="positive">+1.5%</td><td style="font-size:12px;">$16.10 — $85.99</td><td>180.2</td><td><div class="sparkline"></div></td><td style="font-size:12px; color:var(--gray-500);"></td><td><button class="btn btn-sm" style="color:var(--red);">✕</button></td></tr>
+          <tr><td class="ticker">SNOW</td><td>Snowflake Inc.</td><td>$178.45</td><td class="negative">-1.2%</td><td style="font-size:12px;">$107.13 — $197.64</td><td>N/A</td><td><div class="sparkline" style="background:linear-gradient(90deg, var(--red-light) 0%, var(--red-light) 40%, transparent 40%);"></div></td><td style="font-size:12px; color:var(--gray-500);">Cloud data play</td><td><button class="btn btn-sm" style="color:var(--red);">✕</button></td></tr>
+          <tr><td class="ticker">CRWD</td><td>CrowdStrike</td><td>$345.67</td><td class="positive">+0.9%</td><td style="font-size:12px;">$200.81 — $398.79</td><td>450.2</td><td><div class="sparkline"></div></td><td style="font-size:12px; color:var(--gray-500);">Cybersecurity leader</td><td><button class="btn btn-sm" style="color:var(--red);">✕</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- NEWS -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="wf-news" class="wf">
+  <div class="wf-nav">
+    <div class="logo">StockPulse</div>
+    <span class="nav-link">Dashboard</span>
+    <span class="nav-link">Screener</span>
+    <span class="nav-link">Portfolio</span>
+    <span class="nav-link">Watchlist</span>
+    <span class="nav-link active">News</span>
+    <input class="search" placeholder="Search ticker... (Ctrl+K)" readonly>
+  </div>
+  <div class="wf-body">
+    <h2 style="font-size:20px; color:var(--navy); margin-bottom:16px;">News Feed</h2>
+
+    <!-- Filter bar -->
+    <div style="display:flex; gap:8px; margin-bottom:16px; align-items:center;">
+      <div class="btn-group">
+        <button class="btn btn-sm" style="background:var(--blue); color:white; border-color:var(--blue);">All</button>
+        <button class="btn btn-sm">Portfolio</button>
+        <button class="btn btn-sm">Watchlist</button>
+        <button class="btn btn-sm">Custom</button>
+      </div>
+      <input class="wf-input" placeholder="Search news... (e.g., AI semiconductor)" style="max-width:300px; margin-left:8px;">
+      <select class="wf-input" style="width:150px;"><option>All Sources</option><option>Reuters</option><option>Bloomberg</option><option>CNBC</option><option>WSJ</option></select>
+    </div>
+
+    <div style="max-width:800px;">
+      <div class="card">
+        <div class="news-item">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div class="news-title" style="flex:1;">NVIDIA Reports Record Q4 Revenue of $22.1B, Beats Consensus by 12%</div>
+            <span class="badge badge-buy" style="margin-left:12px; flex-shrink:0;">NVDA</span>
+          </div>
+          <div class="news-meta"><span class="source">Reuters</span> · 2 hours ago · Feb 12, 2026</div>
+        </div>
+        <div class="news-item">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div class="news-title" style="flex:1;">Fed Minutes Show Officials Remain Cautious on Rate Cuts Amid Sticky Inflation</div>
+            <span class="badge" style="background:var(--gray-100); color:var(--gray-600); margin-left:12px; flex-shrink:0;">Market</span>
+          </div>
+          <div class="news-meta"><span class="source">Bloomberg</span> · 4 hours ago · Feb 12, 2026</div>
+        </div>
+        <div class="news-item">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div class="news-title" style="flex:1;">Apple Expands AI Features Across Product Line in Latest iOS 19.3 Update</div>
+            <span class="badge badge-buy" style="margin-left:12px; flex-shrink:0;">AAPL</span>
+          </div>
+          <div class="news-meta"><span class="source">CNBC</span> · 5 hours ago · Feb 12, 2026</div>
+        </div>
+        <div class="news-item">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div class="news-title" style="flex:1;">Microsoft Azure Revenue Growth Accelerates to 35% YoY, Cloud Market Share Gains</div>
+            <span class="badge badge-buy" style="margin-left:12px; flex-shrink:0;">MSFT</span>
+          </div>
+          <div class="news-meta"><span class="source">The Verge</span> · 7 hours ago · Feb 12, 2026</div>
+        </div>
+        <div class="news-item">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div class="news-title" style="flex:1;">Palantir Wins $500M Defense Contract, Stock Hits All-Time High</div>
+            <span class="badge badge-buy" style="margin-left:12px; flex-shrink:0;">PLTR</span>
+          </div>
+          <div class="news-meta"><span class="source">WSJ</span> · 8 hours ago · Feb 11, 2026</div>
+        </div>
+        <div class="news-item">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div class="news-title" style="flex:1;">JPMorgan CEO Warns of Geopolitical Risks, Maintains Strong Lending Outlook</div>
+            <span class="badge badge-buy" style="margin-left:12px; flex-shrink:0;">JPM</span>
+          </div>
+          <div class="news-meta"><span class="source">Financial Times</span> · 1 day ago · Feb 11, 2026</div>
+        </div>
+      </div>
+      <div style="text-align:center; margin-top:16px;">
+        <button class="btn">Load More News</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- ADD POSITION MODAL -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="wf-modal" class="wf">
+  <div class="wf-nav">
+    <div class="logo">StockPulse</div>
+    <span class="nav-link">Dashboard</span>
+    <span class="nav-link">Screener</span>
+    <span class="nav-link active">Portfolio</span>
+    <span class="nav-link">Watchlist</span>
+    <span class="nav-link">News</span>
+    <input class="search" placeholder="Search ticker... (Ctrl+K)" readonly>
+  </div>
+  <div class="wf-body">
+    <div class="annotation">This shows the "Add Position" modal overlay that appears on the Portfolio page.</div>
+    <div class="modal-overlay" style="min-height:400px;">
+      <div class="modal">
+        <h3>Add Position</h3>
+        <div class="form-group">
+          <label>Ticker Symbol</label>
+          <input class="wf-input" placeholder="e.g., AAPL" value="AAPL">
+          <div style="font-size:11px; color:var(--green); margin-top:4px;">✓ Apple Inc. (NASDAQ)</div>
+        </div>
+        <div class="form-group">
+          <label>Number of Shares</label>
+          <input class="wf-input" placeholder="e.g., 100" value="50">
+        </div>
+        <div class="form-group">
+          <label>Average Cost per Share ($)</label>
+          <input class="wf-input" placeholder="e.g., 178.50" value="178.50">
+        </div>
+        <div class="form-group">
+          <label>Date Acquired (optional)</label>
+          <input class="wf-input" type="date" value="2025-06-15">
+        </div>
+        <div class="form-group">
+          <label>Notes (optional)</label>
+          <input class="wf-input" placeholder="e.g., Long-term hold, AI thesis">
+        </div>
+        <div class="actions">
+          <button class="btn">Cancel</button>
+          <button class="btn btn-primary">Add Position</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end wireframe-container -->
+
+<script>
+function show(page) {
+  document.querySelectorAll('.wf').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.page-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('wf-' + page).classList.add('active');
+  event.target.classList.add('active');
+  // Update label
+  const labels = {
+    dashboard: '<strong>Dashboard</strong> — Home / Overview page (route: /)',
+    screener: '<strong>Screener</strong> — Stock screening with filters (route: /screener)',
+    ticker: '<strong>Ticker View</strong> — Deep-dive research page (route: /ticker/{symbol})',
+    portfolio: '<strong>Portfolio</strong> — Position tracking & P&L (route: /portfolio)',
+    watchlist: '<strong>Watchlist</strong> — Tracked tickers (route: /watchlist)',
+    news: '<strong>News Feed</strong> — Aggregated news (route: /news)',
+    modal: '<strong>Add Position Modal</strong> — Overlay dialog on Portfolio page',
+  };
+  document.querySelector('.wireframe-label').innerHTML = labels[page] || '';
+}
+</script>
+
+</body>
+</html>

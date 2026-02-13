@@ -1,0 +1,56 @@
+<!-- Overview partial (used by /hx/ticker/{symbol}/analysts fallback) -->
+{% if status == "error" %}
+<div class="alert alert-error">❌ Analyst data temporarily unavailable. <a hx-get="/hx/ticker/{{ symbol }}/analysts"
+        hx-target="#tab-content" hx-swap="innerHTML">Click to retry.</a></div>
+{% else %}
+<div class="card">
+    <div class="card-title">Analyst Consensus</div>
+    <div class="analyst-consensus-header">
+        <div
+            class="consensus-rating {% if analysts.consensus in ['Strong Buy','Buy'] %}positive{% elif analysts.consensus in ['Sell','Strong Sell'] %}negative{% endif %}">
+            {{ analysts.consensus }}
+        </div>
+        <div class="consensus-meta">Based on {{ analysts.count }} analysts</div>
+    </div>
+    <div class="target-prices">
+        <div class="target">
+            <div class="target-value negative">${{ analysts.low }}</div>
+            <div class="target-label">Low Target</div>
+        </div>
+        <div class="target">
+            <div class="target-value">${{ analysts.avg }}</div>
+            <div class="target-label">Avg Target</div>
+        </div>
+        <div class="target">
+            <div class="target-value positive">${{ analysts.high }}</div>
+            <div class="target-label">High Target</div>
+        </div>
+    </div>
+    {% if analysts.ratings %}
+    <table class="wf-table" style="font-size:12px;">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Analyst</th>
+                <th>Action</th>
+                <th>Rating</th>
+                <th>Target</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in analysts.ratings %}
+            <tr>
+                <td>{{ r.date }}</td>
+                <td>{{ r.firm }}</td>
+                <td>{{ r.action }}</td>
+                <td><span
+                        class="badge badge-{{ 'buy' if r.rating in ['Buy','Strong Buy','Overweight'] else ('sell' if r.rating in ['Sell','Strong Sell','Underweight'] else 'hold') }}">{{
+                        r.rating }}</span></td>
+                <td>${{ r.target }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+{% endif %}

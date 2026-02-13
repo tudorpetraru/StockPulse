@@ -1,0 +1,27 @@
+<!-- News tab partial -->
+{% if status == "error" %}
+<div class="alert alert-error">❌ News data temporarily unavailable. <a hx-get="/hx/ticker/{{ symbol }}/news"
+        hx-target="#tab-content" hx-swap="innerHTML">Click to retry.</a></div>
+{% elif news %}
+<div class="card">
+    <div class="card-title">Latest News — {{ symbol }}</div>
+    {% for item in news %}
+    <div class="news-item">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <a href="{{ item.link }}" target="_blank" rel="noopener" class="news-title" style="flex:1;">{{ item.title
+                }}</a>
+            {% if item.ticker %}
+            <span class="badge badge-blue" style="margin-left:12px;flex-shrink:0;">{{ item.ticker }}</span>
+            {% endif %}
+        </div>
+        <div class="news-meta">
+            <span class="source">{{ item.source }}</span> · {{ item.time_ago }} · {{ item.date }}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <p style="color:var(--gray-500);font-size:13px;">No recent news found for {{ symbol }}.</p>
+</div>
+{% endif %}

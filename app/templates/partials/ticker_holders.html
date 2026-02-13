@@ -1,0 +1,40 @@
+<!-- Holders tab partial -->
+{% if status == "error" %}
+<div class="alert alert-error">❌ Holder data temporarily unavailable. <a hx-get="/hx/ticker/{{ symbol }}/holders"
+        hx-target="#tab-content" hx-swap="innerHTML">Click to retry.</a></div>
+{% else %}
+{% macro holders_table(title, rows) %}
+<div class="card">
+    <div class="card-title">{{ title }}</div>
+    {% if rows %}
+    <table class="wf-table">
+        <thead>
+            <tr>
+                <th>Holder</th>
+                <th>Shares</th>
+                <th>% Out</th>
+                <th>Value</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for h in rows %}
+            <tr>
+                <td style="font-weight:500;">{{ h.name }}</td>
+                <td>{{ "{:,.0f}".format(h.shares) if h.shares else "N/A" }}</td>
+                <td>{{ "%.2f"|format(h.pct_out) if h.pct_out else "N/A" }}%</td>
+                <td>{{ "${:,.0f}".format(h.value) if h.value else "N/A" }}</td>
+                <td>{{ h.date }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--gray-500);font-size:13px;">No data available.</p>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{{ holders_table("Top Institutional Holders", holders.institutional) }}
+{{ holders_table("Top Mutual Fund Holders", holders.mutual_fund) }}
+{% endif %}

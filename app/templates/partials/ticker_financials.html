@@ -1,0 +1,50 @@
+<!-- Financials partial – income, balance sheet, cash flow tables -->
+{% if status == "error" %}
+<div class="alert alert-error">❌ Financial data temporarily unavailable. <a hx-get="/hx/ticker/{{ symbol }}/financials"
+        hx-target="#tab-content" hx-swap="innerHTML">Click to retry.</a></div>
+{% else %}
+<div x-data="{ view: '{{ period }}' }">
+    <div class="btn-group" style="margin-bottom:16px;">
+        <button class="btn btn-sm" :class="{ 'btn-primary': view === 'annual' }" @click="view = 'annual'"
+            hx-get="/hx/ticker/{{ symbol }}/financials?period=annual" hx-target="#tab-content"
+            hx-swap="innerHTML">Annual</button>
+        <button class="btn btn-sm" :class="{ 'btn-primary': view === 'quarterly' }" @click="view = 'quarterly'"
+            hx-get="/hx/ticker/{{ symbol }}/financials?period=quarterly" hx-target="#tab-content"
+            hx-swap="innerHTML">Quarterly</button>
+    </div>
+</div>
+
+{% macro financial_table(title, rows, columns) %}
+<div class="card">
+    <div class="card-title">{{ title }}</div>
+    {% if rows %}
+    <div style="overflow-x:auto;">
+        <table class="wf-table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    {% for col in columns %}<th>{{ col }}</th>{% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td style="font-weight:500;">{{ row.label }}</td>
+                    {% for val in row.values %}
+                    <td>{{ val }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p style="color:var(--gray-500);font-size:13px;">No data available.</p>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{{ financial_table("Income Statement", financials.income, financials.get("columns", [])) }}
+{{ financial_table("Balance Sheet", financials.balance, financials.get("columns", [])) }}
+{{ financial_table("Cash Flow", financials.cashflow, financials.get("columns", [])) }}
+{% endif %}

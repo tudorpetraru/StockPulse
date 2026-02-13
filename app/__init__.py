@@ -1,0 +1,1 @@
+"""StockPulse application package."""

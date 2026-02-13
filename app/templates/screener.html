@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% block title %}Stock Screener — StockPulse{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+    <h2 style="font-size:20px;color:var(--navy);">Stock Screener</h2>
+    <div style="display:flex;gap:8px;align-items:center;">
+        <select id="preset-select" class="wf-input" style="width:180px;" onchange="loadPreset(this.value)">
+            <option value="">Load Preset...</option>
+            {% for p in presets %}
+            <option value="{{ p.id }}">{{ p.name }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn btn-sm" onclick="savePreset()">Save Preset</button>
+        <button class="btn btn-sm" onclick="resetFilters()">Reset</button>
+    </div>
+</div>
+
+<div class="grid-sidebar">
+    <!-- ── Filter Panel ──────────────────────────────────────────────── -->
+    <div class="card" style="padding:16px;">
+        <form id="screener-form" hx-post="/hx/screener/results" hx-target="#screener-results" hx-swap="innerHTML"
+            hx-trigger="submit, change from:.auto-submit delay:300ms">
+
+            <h3 style="font-size:14px;color:var(--navy);margin-bottom:12px;">Valuation</h3>
+            <div class="filter-group">
+                <label>P/E</label>
+                <div class="range-inputs">
+                    <input type="number" name="pe_min" placeholder="Min" class="wf-input auto-submit" step="0.1">
+                    <span>–</span>
+                    <input type="number" name="pe_max" placeholder="Max" class="wf-input auto-submit" step="0.1">
+                </div>
+            </div>
+            <div class="filter-group">
+                <label>Fwd P/E</label>
+                <div class="range-inputs">
+                    <input type="number" name="fwd_pe_min" placeholder="Min" class="wf-input auto-submit" step="0.1">
+                    <span>–</span>
+                    <input type="number" name="fwd_pe_max" placeholder="Max" class="wf-input auto-submit" step="0.1">
+                </div>
+            </div>
+            <div class="filter-group">
+                <label>P/B</label>
+                <div class="range-inputs">
+                    <input type="number" name="pb_min" placeholder="Min" class="wf-input auto-submit" step="0.1">
+                    <span>–</span>
+                    <input type="number" name="pb_max" placeholder="Max" class="wf-input auto-submit" step="0.1">
+                </div>
+            </div>
+
+            <h3 style="font-size:14px;color:var(--navy);margin:16px 0 12px;">Size</h3>
+            <div class="filter-group">
+                <label>Market Cap</label>
+                <select name="mkt_cap" class="wf-input auto-submit">
+                    <option value="">Any</option>
+                    <option value="mega">Mega (&gt;$200B)</option>
+                    <option value="large">Large ($10B–$200B)</option>
+                    <option value="mid">Mid ($2B–$10B)</option>
+                    <option value="small">Small ($300M–$2B)</option>
+                    <option value="micro">Micro (&lt;$300M)</option>
+                </select>
+            </div>
+
+            <h3 style="font-size:14px;color:var(--navy);margin:16px 0 12px;">Profitability</h3>
+            <div class="filter-group">
+                <label>EPS</label>
+                <div class="range-inputs">
+                    <input type="number" name="eps_min" placeholder="Min" class="wf-input auto-submit" step="0.01">
+                    <span>–</span>
+                    <input type="number" name="eps_max" placeholder="Max" class="wf-input auto-submit" step="0.01">
+                </div>
+            </div>
+            <div class="filter-group">
+                <label>ROE %</label>
+                <div class="range-inputs">
+                    <input type="number" name="roe_min" placeholder="Min" class="wf-input auto-submit" step="0.1">
+                    <span>–</span>
+                    <input type="number" name="roe_max" placeholder="Max" class="wf-input auto-submit" step="0.1">
+                </div>
+            </div>
+
+            <h3 style="font-size:14px;color:var(--navy);margin:16px 0 12px;">Technical</h3>
+            <div class="filter-group">
+                <label>RSI</label>
+                <div class="range-inputs">
+                    <input type="number" name="rsi_min" placeholder="Min" class="wf-input auto-submit" step="1" min="0"
+                        max="100">
+                    <span>–</span>
+                    <input type="number" name="rsi_max" placeholder="Max" class="wf-input auto-submit" step="1" min="0"
+                        max="100">
+                </div>
+            </div>
+            <div class="filter-group">
+                <label>SMA50 Position</label>
+                <select name="sma50_pos" class="wf-input auto-submit">
+                    <option value="">Any</option>
+                    <option value="above">Price above SMA50</option>
+                    <option value="below">Price below SMA50</option>
+                </select>
+            </div>
+
+            <h3 style="font-size:14px;color:var(--navy);margin:16px 0 12px;">Ownership</h3>
+            <div class="filter-group">
+                <label>Insider %</label>
+                <div class="range-inputs">
+                    <input type="number" name="insider_min" placeholder="Min" class="wf-input auto-submit" step="0.1">
+                    <span>–</span>
+                    <input type="number" name="insider_max" placeholder="Max" class="wf-input auto-submit" step="0.1">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width:100%;margin-top:16px;">Screen</button>
+        </form>
+    </div>
+
+    <!-- ── Results Area ──────────────────────────────────────────────── -->
+    <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div id="results-count" style="font-size:13px;color:var(--gray-600);"></div>
+            <button class="btn btn-sm" onclick="exportCSV()" id="export-btn" style="display:none;">
+                📥 Export CSV
+            </button>
+        </div>
+        <div id="screener-results">
+            <div class="card" style="text-align:center;padding:48px;">
+                <p style="color:var(--gray-500);">Set your filters and click "Screen" to find matching stocks.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function resetFilters() {
+        document.getElementById('screener-form').reset();
+    }
+
+    async function loadPreset(presetId) {
+        if (!presetId) return;
+        const resp = await fetch('/api/screener/presets');
+        const presets = await resp.json();
+        const preset = presets.find(p => p.id === presetId);
+        if (!preset) return;
+        resetFilters();
+        const form = document.getElementById('screener-form');
+        Object.entries(preset.filters).forEach(([k, v]) => {
+            const el = form.querySelector(`[name="${k}"]`);
+            if (el) el.value = v;
+        });
+        htmx.trigger(form, 'submit');
+    }
+
+    function savePreset() {
+        const name = prompt('Preset name:');
+        if (!name) return;
+        const form = document.getElementById('screener-form');
+        const fd = new FormData(form);
+        const filters = {};
+        fd.forEach((v, k) => { if (v) filters[k] = v; });
+        fetch('/api/screener/presets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, filters })
+        }).then(r => r.json()).then(p => {
+            const sel = document.getElementById('preset-select');
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.name;
+            sel.appendChild(opt);
+            sel.value = p.id;
+        });
+    }
+
+    function exportCSV() {
+        const form = document.getElementById('screener-form');
+        const fd = new FormData(form);
+        fetch('/api/screener/export', { method: 'POST', body: fd })
+            .then(r => r.blob())
+            .then(blob => {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'screener_export.csv';
+                a.click();
+            });
+    }
+
+    // Show export button + count after HTMX swap
+    document.body.addEventListener('htmx:afterSwap', function (e) {
+        if (e.detail.target.id === 'screener-results') {
+            const rows = e.detail.target.querySelectorAll('tbody tr');
+            const countEl = document.getElementById('results-count');
+            const exportBtn = document.getElementById('export-btn');
+            if (rows.length) {
+                const total = e.detail.target.dataset.total || rows.length;
+                countEl.textContent = `${total} results`;
+                exportBtn.style.display = 'block';
+            } else {
+                countEl.textContent = '';
+                exportBtn.style.display = 'none';
+            }
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,186 @@
+<!-- Predictions tab partial -->
+{% if status == "error" %}
+<div class="alert alert-error">❌ Prediction data temporarily unavailable. <a
+        hx-get="/hx/ticker/{{ symbol }}/predictions" hx-target="#tab-content" hx-swap="innerHTML">Click to retry.</a>
+</div>
+{% else %}
+
+<!-- Summary Stats -->
+<div class="card">
+    <div class="card-title">Prediction Tracking Summary — {{ symbol }}</div>
+    <div class="grid-4">
+        <div class="stat">
+            <div class="stat-value">{{ summary.active }}</div>
+            <div class="stat-label">Active Predictions</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value" {% if cold_start %}style="color:var(--gray-400);" {% endif %}>
+                {{ summary.resolved if summary.resolved else "0" }}
+            </div>
+            <div class="stat-label">Resolved</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value {% if summary.accuracy and summary.accuracy >= 60 %}positive{% elif summary.accuracy and summary.accuracy < 40 %}negative{% endif %}"
+                {% if cold_start %}style="color:var(--gray-400);" {% endif %}>
+                {% if summary.accuracy is not none %}{{ "%.0f"|format(summary.accuracy) }}%{% else %}—{% endif %}
+            </div>
+            <div class="stat-label">Consensus Accuracy{% if cold_start %} (pending){% endif %}</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">{{ summary.consensus_target }}</div>
+            <div class="stat-label">Current Consensus Target</div>
+        </div>
+    </div>
+</div>
+
+<!-- Cold Start Message -->
+{% if cold_start %}
+<div class="cold-start">
+    <h3>📊 Building Your Prediction Database</h3>
+    <p>StockPulse is collecting analyst predictions for <strong>{{ symbol }}</strong>.</p>
+    <p>Accuracy scores require 12 months of data. First results will appear approximately 12 months after initial data
+        collection.</p>
+    <p style="margin-top:12px;">In the meantime, you can see how analyst targets evolve over time in the chart below.
+    </p>
+</div>
+{% endif %}
+
+<!-- Consensus Timeline Chart -->
+<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div class="card-title" style="margin-bottom:0;">Consensus Target vs Actual Price</div>
+        <div class="period-selector" style="margin-bottom:0;">
+            <button class="period-btn" onclick="loadConsensusChart('{{ symbol }}', '1Y')">1Y</button>
+            <button class="period-btn active" onclick="loadConsensusChart('{{ symbol }}', '2Y')">2Y</button>
+            <button class="period-btn" onclick="loadConsensusChart('{{ symbol }}', 'All')">All</button>
+        </div>
+    </div>
+    <div id="consensus-chart" style="height:300px;"></div>
+    {% if cold_start %}
+    <div style="font-size:12px;color:var(--gray-500);margin-top:8px;text-align:center;">
+        Chart will populate as daily snapshots accumulate. Accuracy markers appear after predictions resolve (12
+        months).
+    </div>
+    {% endif %}
+</div>
+
+<!-- Analyst Scorecard -->
+{% if scorecard %}
+<div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div class="card-title" style="margin-bottom:0;">Analyst Scorecard — {{ symbol }} Coverage</div>
+        <span style="font-size:12px;color:var(--gray-500);">Sorted by Composite Score ↓</span>
+    </div>
+    <table class="wf-table">
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Firm</th>
+                <th>Predictions</th>
+                <th>Success Rate ↕</th>
+                <th>Direction ↕</th>
+                <th>Avg Error ↕</th>
+                <th>Score ↕</th>
+                <th>Latest</th>
+                <th>Target</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in scorecard %}
+            <tr>
+                <td>
+                    <span
+                        class="leaderboard-rank {% if loop.index == 1 %}rank-gold{% elif loop.index == 2 %}rank-silver{% elif loop.index == 3 %}rank-bronze{% else %}rank-normal{% endif %}">
+                        {% if a.insufficient %}—{% else %}{{ loop.index }}{% endif %}
+                    </span>
+                </td>
+                <td style="font-weight:600;">{{ a.firm }}</td>
+                <td>{{ a.total_predictions }}</td>
+                {% if a.insufficient %}
+                <td colspan="4" style="color:var(--gray-500);font-style:italic;">Insufficient data (min 5 predictions
+                    required)</td>
+                {% else %}
+                <td>
+                    <span
+                        class="score-bar {% if a.success_rate >= 60 %}score-high{% elif a.success_rate >= 40 %}score-mid{% else %}score-low{% endif %}">
+                        <span class="score-bar-fill" style="width:{{ a.success_rate }}%"></span>
+                    </span>
+                    <span
+                        class="{% if a.success_rate >= 60 %}positive{% elif a.success_rate < 40 %}negative{% endif %}">{{
+                        "%.0f"|format(a.success_rate) }}%</span>
+                </td>
+                <td class="{% if a.direction_rate >= 70 %}positive{% elif a.direction_rate < 50 %}negative{% endif %}">
+                    {{ "%.0f"|format(a.direction_rate) }}%</td>
+                <td>{{ "%.1f"|format(a.avg_error) }}%</td>
+                <td><span
+                        class="badge {% if a.composite >= 70 %}badge-green{% elif a.composite >= 50 %}badge-amber{% else %}badge-red{% endif %}">{{
+                        "%.0f"|format(a.composite) }}</span></td>
+                {% endif %}
+                <td><span
+                        class="badge {% if a.latest_rating in ['Buy','Strong Buy','Overweight'] %}badge-green{% elif a.latest_rating in ['Sell','Strong Sell','Underweight'] %}badge-red{% else %}badge-amber{% endif %}">{{
+                        a.latest_rating }}</span></td>
+                <td>${{ a.latest_target }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- Prediction History Feed -->
+{% if predictions %}
+<div class="card">
+    <div class="card-title">Prediction History</div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <button class="btn btn-sm btn-primary">All</button>
+        <button class="btn btn-sm">Resolved</button>
+        <button class="btn btn-sm">Pending</button>
+    </div>
+
+    {% for p in predictions %}
+    <div class="prediction-item">
+        <div class="prediction-date">{{ p.date }}<br>{{ p.year }}</div>
+        <div class="prediction-content">
+            <div class="prediction-firm">
+                {{ p.firm }}
+                <span
+                    class="badge {% if p.rating in ['Buy','Strong Buy','Overweight'] %}badge-green{% elif p.rating in ['Sell','Strong Sell','Underweight'] %}badge-red{% else %}badge-amber{% endif %}"
+                    style="margin-left:6px;">{{ p.rating }}</span>
+            </div>
+            <div class="prediction-detail">{{ p.action }} with target <strong>${{ p.target }}</strong> (implied {{
+                p.implied_return }})</div>
+            {% if p.resolved %}
+            <div class="prediction-detail">Actual price on {{ p.resolve_date }}: <strong>${{ p.actual_price }}</strong>
+                (actual return: {{ p.actual_return }})</div>
+            {% else %}
+            <div class="prediction-detail" style="color:var(--gray-400);">Resolves: {{ p.resolve_date }}</div>
+            {% endif %}
+        </div>
+        <div class="prediction-outcome">
+            {% if p.resolved %}
+            {% if p.accurate %}
+            <span class="badge badge-green">✓ Accurate</span>
+            <div style="font-size:11px;color:var(--green);margin-top:4px;">Error: {{ p.error_pct }}</div>
+            {% else %}
+            <span class="badge badge-red">✗ Missed</span>
+            <div style="font-size:11px;color:var(--red);margin-top:4px;">Error: {{ p.error_pct }}</div>
+            {% endif %}
+            {% else %}
+            <span class="badge badge-blue">Pending</span>
+            <div style="font-size:11px;color:var(--gray-500);margin-top:4px;">{{ p.days_left }} days left</div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<script>
+    async function loadConsensusChart(symbol, period) {
+        const resp = await fetch(`/api/chart/${symbol}/consensus?period=${period}`);
+        const spec = await resp.json();
+        Plotly.newPlot('consensus-chart', spec.data, spec.layout, { responsive: true, displayModeBar: false });
+    }
+    document.addEventListener('DOMContentLoaded', () => loadConsensusChart('{{ symbol }}', '2Y'));
+</script>
+{% endif %}

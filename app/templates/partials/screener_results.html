@@ -1,0 +1,75 @@
+<!-- Screener results partial (sortable table + pagination) -->
+{% if status == "error" %}
+<div class="alert alert-error">
+    ❌ Screener query failed. <a hx-post="/hx/screener/results" hx-target="#screener-results" hx-swap="innerHTML"
+        hx-include="#screener-form">Click to retry.</a>
+</div>
+{% elif results %}
+<div data-total="{{ total }}">
+    <div class="card" style="padding:0;overflow:hidden;">
+        <table class="wf-table" id="screener-table">
+            <thead>
+                <tr>
+                    {% set cols = [
+                    ("ticker", "Ticker"), ("company", "Company"), ("price", "Price"),
+                    ("change_pct", "Chg%"), ("mkt_cap", "Mkt Cap"), ("pe", "P/E"),
+                    ("eps", "EPS"), ("volume", "Volume"),
+                    ] %}
+                    {% for key, label in cols %}
+                    <th hx-post="/hx/screener/results?sort_by={{ key }}&sort_dir={% if sort_by == key and sort_dir == 'asc' %}desc{% else %}asc{% endif %}&page={{ page }}"
+                        hx-include="#screener-form" hx-target="#screener-results" hx-swap="innerHTML"
+                        style="cursor:pointer;">
+                        {{ label }}
+                        {% if sort_by == key %}
+                        {% if sort_dir == "asc" %}↑{% else %}↓{% endif %}
+                        {% else %}
+                        ↕
+                        {% endif %}
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in results %}
+                <tr>
+                    <td class="ticker"><a href="/ticker/{{ r.ticker }}">{{ r.ticker }}</a></td>
+                    <td>{{ r.company }}</td>
+                    <td>${{ "%.2f"|format(r.price) if r.price else "N/A" }}</td>
+                    <td
+                        class="{% if r.change_pct and r.change_pct >= 0 %}positive{% elif r.change_pct %}negative{% endif %}">
+                        {% if r.change_pct is not none %}{% if r.change_pct >= 0 %}+{% endif %}{{
+                        "%.1f"|format(r.change_pct) }}%{% else %}N/A{% endif %}
+                    </td>
+                    <td>{{ r.mkt_cap if r.mkt_cap else "N/A" }}</td>
+                    <td>{{ "%.1f"|format(r.pe) if r.pe else "N/A" }}</td>
+                    <td>{{ "%.2f"|format(r.eps) if r.eps else "N/A" }}</td>
+                    <td>{{ "{:,.0f}".format(r.volume) if r.volume else "N/A" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="pagination" style="margin-top:12px;">
+        {% if page > 1 %}
+        <button class="btn btn-sm"
+            hx-post="/hx/screener/results?sort_by={{ sort_by }}&sort_dir={{ sort_dir }}&page={{ page - 1 }}"
+            hx-include="#screener-form" hx-target="#screener-results" hx-swap="innerHTML">← Prev</button>
+        {% endif %}
+        <span style="font-size:13px;color:var(--gray-600);margin:0 12px;">
+            Page {{ page }} of {{ total_pages }} ({{ total }} results)
+        </span>
+        {% if page < total_pages %} <button class="btn btn-sm"
+            hx-post="/hx/screener/results?sort_by={{ sort_by }}&sort_dir={{ sort_dir }}&page={{ page + 1 }}"
+            hx-include="#screener-form" hx-target="#screener-results" hx-swap="innerHTML">Next →</button>
+            {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:32px;">
+    <p style="color:var(--gray-500);">No stocks matched your criteria. Try adjusting your filters.</p>
+</div>
+{% endif %}

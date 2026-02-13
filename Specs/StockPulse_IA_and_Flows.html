@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockPulse — Information Architecture & User Flows</title>
+<style>
+  :root {
+    --navy: #1B2A4A;
+    --navy-light: #2C3E6B;
+    --slate: #37474F;
+    --blue: #1976D2;
+    --blue-light: #E3F2FD;
+    --green: #2E7D32;
+    --green-light: #E8F5E9;
+    --amber: #F57F17;
+    --amber-light: #FFF8E1;
+    --red: #C62828;
+    --red-light: #FFEBEE;
+    --purple: #7B1FA2;
+    --purple-light: #F3E5F5;
+    --gray-50: #FAFAFA;
+    --gray-100: #F5F5F5;
+    --gray-200: #EEEEEE;
+    --gray-300: #E0E0E0;
+    --gray-400: #BDBDBD;
+    --gray-600: #757575;
+    --gray-800: #424242;
+    --bg: #FFFFFF;
+    --text: #212121;
+    --radius: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-lg: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--text); background: var(--gray-50); line-height: 1.6; }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+  /* Header */
+  .doc-header { background: var(--navy); color: white; padding: 48px 0 40px; }
+  .doc-header h1 { font-size: 32px; font-weight: 700; margin-bottom: 8px; }
+  .doc-header .subtitle { font-size: 18px; opacity: 0.8; }
+  .doc-header .meta { font-size: 14px; opacity: 0.6; margin-top: 16px; }
+
+  /* Navigation */
+  .doc-nav { background: white; border-bottom: 1px solid var(--gray-200); position: sticky; top: 0; z-index: 100; }
+  .doc-nav ul { display: flex; gap: 0; list-style: none; overflow-x: auto; }
+  .doc-nav a { display: block; padding: 14px 20px; font-size: 14px; font-weight: 500; color: var(--gray-600); text-decoration: none; border-bottom: 2px solid transparent; white-space: nowrap; }
+  .doc-nav a:hover, .doc-nav a.active { color: var(--blue); border-bottom-color: var(--blue); }
+
+  /* Sections */
+  .section { padding: 48px 0; }
+  .section + .section { border-top: 1px solid var(--gray-200); }
+  .section-title { font-size: 24px; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
+  .section-subtitle { font-size: 15px; color: var(--gray-600); margin-bottom: 32px; }
+
+  h3 { font-size: 18px; font-weight: 600; color: var(--slate); margin: 32px 0 16px; }
+  h4 { font-size: 15px; font-weight: 600; color: var(--slate); margin: 24px 0 12px; }
+  p { margin-bottom: 16px; font-size: 15px; color: var(--gray-800); }
+
+  /* Sitemap tree */
+  .sitemap { display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 32px; }
+  .sitemap-level { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+  .sitemap-node { background: white; border: 2px solid var(--gray-300); border-radius: var(--radius); padding: 12px 20px; text-align: center; min-width: 140px; position: relative; box-shadow: var(--shadow); }
+  .sitemap-node.root { background: var(--navy); color: white; border-color: var(--navy); font-weight: 700; font-size: 16px; }
+  .sitemap-node.primary { background: var(--blue-light); border-color: var(--blue); font-weight: 600; }
+  .sitemap-node.secondary { background: var(--gray-100); border-color: var(--gray-300); font-size: 13px; }
+  .sitemap-node .node-label { font-size: 14px; font-weight: 600; }
+  .sitemap-node .node-path { font-size: 11px; color: var(--gray-600); margin-top: 4px; font-family: monospace; }
+  .connector-line { width: 2px; height: 24px; background: var(--gray-300); }
+  .connector-spread { display: flex; align-items: flex-start; justify-content: center; position: relative; }
+  .connector-spread::before { content: ''; position: absolute; top: 0; left: 10%; right: 10%; height: 2px; background: var(--gray-300); }
+
+  /* Flow diagrams */
+  .flow { display: flex; flex-direction: column; gap: 0; align-items: center; padding: 24px 0; }
+  .flow-step { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
+  .flow-box { background: white; border: 2px solid var(--gray-300); border-radius: var(--radius); padding: 14px 24px; min-width: 240px; text-align: center; font-size: 14px; box-shadow: var(--shadow); }
+  .flow-box.action { border-color: var(--blue); background: var(--blue-light); }
+  .flow-box.decision { border-color: var(--amber); background: var(--amber-light); transform: rotate(0deg); border-radius: 4px; border-style: dashed; }
+  .flow-box.result { border-color: var(--green); background: var(--green-light); }
+  .flow-box.error { border-color: var(--red); background: var(--red-light); }
+  .flow-box.system { border-color: var(--purple); background: var(--purple-light); }
+  .flow-arrow { color: var(--gray-400); font-size: 20px; }
+  .flow-label { font-size: 12px; color: var(--gray-600); font-style: italic; }
+  .flow-branch { display: flex; gap: 32px; align-items: flex-start; justify-content: center; }
+  .flow-branch > div { display: flex; flex-direction: column; align-items: center; gap: 0; }
+
+  /* Nav structure */
+  .nav-structure { background: white; border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
+  .nav-bar { display: flex; align-items: center; background: var(--navy); border-radius: 6px; padding: 0 16px; margin-bottom: 16px; }
+  .nav-bar .logo { color: white; font-weight: 700; font-size: 16px; padding: 12px 16px 12px 0; border-right: 1px solid rgba(255,255,255,0.2); }
+  .nav-bar .nav-items { display: flex; gap: 0; }
+  .nav-bar .nav-item { color: rgba(255,255,255,0.7); font-size: 13px; padding: 12px 16px; cursor: default; }
+  .nav-bar .nav-item.active { color: white; border-bottom: 2px solid white; }
+  .nav-bar .search-box { margin-left: auto; background: rgba(255,255,255,0.15); border: none; border-radius: 4px; padding: 6px 12px; color: rgba(255,255,255,0.6); font-size: 12px; width: 200px; }
+
+  .sidebar-layout { display: flex; gap: 24px; }
+  .sidebar { width: 200px; flex-shrink: 0; }
+  .sidebar-section { margin-bottom: 20px; }
+  .sidebar-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--gray-400); letter-spacing: 0.5px; margin-bottom: 8px; }
+  .sidebar-link { display: block; padding: 6px 12px; font-size: 13px; color: var(--gray-600); border-radius: 4px; margin-bottom: 2px; }
+  .sidebar-link.active { background: var(--blue-light); color: var(--blue); font-weight: 600; }
+  .main-content { flex: 1; background: var(--gray-100); border-radius: 6px; padding: 20px; min-height: 200px; border: 1px dashed var(--gray-300); display: flex; align-items: center; justify-content: center; color: var(--gray-400); font-size: 14px; }
+
+  /* Page inventory table */
+  table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 14px; }
+  th { background: var(--navy); color: white; padding: 10px 14px; text-align: left; font-weight: 600; font-size: 13px; }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--gray-200); }
+  tr:nth-child(even) td { background: var(--gray-50); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .badge-p0 { background: var(--green-light); color: var(--green); }
+  .badge-p1 { background: var(--amber-light); color: var(--amber); }
+  .badge-p2 { background: var(--purple-light); color: var(--purple); }
+
+  /* Content hierarchy */
+  .content-hierarchy { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .ch-card { background: white; border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+  .ch-card h4 { margin-top: 0; font-size: 15px; color: var(--navy); display: flex; align-items: center; gap: 8px; }
+  .ch-card .icon { width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .ch-card ul { list-style: none; margin-top: 12px; }
+  .ch-card li { font-size: 13px; padding: 4px 0; color: var(--gray-800); padding-left: 16px; position: relative; }
+  .ch-card li::before { content: '›'; position: absolute; left: 0; color: var(--gray-400); }
+  .ch-card li.sub { padding-left: 32px; color: var(--gray-600); }
+  .ch-card li.sub::before { left: 16px; }
+
+  /* Tabs preview */
+  .tabs-preview { background: white; border: 1px solid var(--gray-200); border-radius: var(--radius); overflow: hidden; margin: 16px 0; }
+  .tabs-bar { display: flex; background: var(--gray-100); border-bottom: 1px solid var(--gray-200); }
+  .tab { padding: 10px 20px; font-size: 13px; color: var(--gray-600); cursor: default; border-bottom: 2px solid transparent; }
+  .tab.active { color: var(--blue); border-bottom-color: var(--blue); background: white; font-weight: 600; }
+  .tabs-content { padding: 20px; color: var(--gray-400); font-size: 13px; min-height: 80px; }
+</style>
+</head>
+<body>
+
+<div class="doc-header">
+  <div class="container">
+    <h1>Information Architecture & User Flows</h1>
+    <div class="subtitle">StockPulse — Navigation Structure, Page Inventory, and User Journey Maps</div>
+    <div class="meta">Version 1.0 · February 2026 · Tudor Petraru</div>
+  </div>
+</div>
+
+<nav class="doc-nav">
+  <div class="container">
+    <ul>
+      <li><a href="#sitemap" class="active">Sitemap</a></li>
+      <li><a href="#navigation">Navigation</a></li>
+      <li><a href="#pages">Page Inventory</a></li>
+      <li><a href="#content">Content Hierarchy</a></li>
+      <li><a href="#flows">User Flows</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ═══════════════ SITEMAP ═══════════════ -->
+<div id="sitemap" class="section">
+  <div class="container">
+    <h2 class="section-title">1. Site Map</h2>
+    <p class="section-subtitle">Hierarchical view of all pages and their relationships. Primary pages are accessible from the main navigation; secondary pages are reached through in-context links.</p>
+
+    <div class="sitemap">
+      <!-- Root -->
+      <div class="sitemap-level">
+        <div class="sitemap-node root">
+          <div class="node-label">StockPulse</div>
+          <div class="node-path" style="color:rgba(255,255,255,0.6)">localhost:8000</div>
+        </div>
+      </div>
+
+      <div class="connector-line"></div>
+
+      <!-- Primary pages -->
+      <div class="sitemap-level">
+        <div class="sitemap-node primary">
+          <div class="node-label">Dashboard</div>
+          <div class="node-path">/</div>
+        </div>
+        <div class="sitemap-node primary">
+          <div class="node-label">Screener</div>
+          <div class="node-path">/screener</div>
+        </div>
+        <div class="sitemap-node primary">
+          <div class="node-label">Portfolio</div>
+          <div class="node-path">/portfolio</div>
+        </div>
+        <div class="sitemap-node primary">
+          <div class="node-label">Watchlist</div>
+          <div class="node-path">/watchlist</div>
+        </div>
+        <div class="sitemap-node primary">
+          <div class="node-label">News</div>
+          <div class="node-path">/news</div>
+        </div>
+      </div>
+
+      <div class="connector-line"></div>
+
+      <!-- Secondary pages -->
+      <div class="sitemap-level">
+        <div class="sitemap-node secondary">
+          <div class="node-label">Ticker View</div>
+          <div class="node-path">/ticker/{symbol}</div>
+        </div>
+      </div>
+
+      <div class="connector-line"></div>
+
+      <!-- Ticker sub-panels -->
+      <div class="sitemap-level">
+        <div class="sitemap-node secondary">
+          <div class="node-label">Overview</div>
+          <div class="node-path">Tab 1</div>
+        </div>
+        <div class="sitemap-node secondary">
+          <div class="node-label">Financials</div>
+          <div class="node-path">Tab 2</div>
+        </div>
+        <div class="sitemap-node secondary">
+          <div class="node-label">News</div>
+          <div class="node-path">Tab 3</div>
+        </div>
+        <div class="sitemap-node secondary">
+          <div class="node-label">Insiders</div>
+          <div class="node-path">Tab 4</div>
+        </div>
+        <div class="sitemap-node secondary">
+          <div class="node-label">Holders</div>
+          <div class="node-path">Tab 5</div>
+        </div>
+        <div class="sitemap-node secondary">
+          <div class="node-label">Earnings</div>
+          <div class="node-path">Tab 6</div>
+        </div>
+      </div>
+    </div>
+
+    <p style="text-align:center; font-size:13px; color:var(--gray-600); margin-top:16px;">
+      <strong>Navigation paths:</strong> Every primary page is reachable from the top nav bar. Ticker View is reached by clicking any ticker symbol from Screener, Portfolio, Watchlist, News, or the global search.
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════════ NAVIGATION ═══════════════ -->
+<div id="navigation" class="section">
+  <div class="container">
+    <h2 class="section-title">2. Navigation Structure</h2>
+    <p class="section-subtitle">The application uses a fixed top navigation bar with a global search, plus contextual sidebar navigation where applicable.</p>
+
+    <h3>2.1 Global Navigation Bar</h3>
+    <div class="nav-structure">
+      <div class="nav-bar">
+        <div class="logo">StockPulse</div>
+        <div class="nav-items">
+          <div class="nav-item active">Dashboard</div>
+          <div class="nav-item">Screener</div>
+          <div class="nav-item">Portfolio</div>
+          <div class="nav-item">Watchlist</div>
+          <div class="nav-item">News</div>
+        </div>
+        <input class="search-box" value="Search ticker... (Ctrl+K)" readonly>
+      </div>
+      <p style="font-size:13px; color:var(--gray-600); margin-top:12px; margin-bottom:0;">
+        The nav bar is always visible. Active page is highlighted. Global search accepts ticker symbols or company names and navigates directly to /ticker/{symbol}.
+      </p>
+    </div>
+
+    <h3>2.2 Contextual Sidebar (Portfolio & Watchlist)</h3>
+    <div class="nav-structure" style="margin-top:16px;">
+      <div class="sidebar-layout">
+        <div class="sidebar">
+          <div class="sidebar-section">
+            <div class="sidebar-title">Portfolios</div>
+            <div class="sidebar-link active">Main Portfolio</div>
+            <div class="sidebar-link">IRA Account</div>
+            <div class="sidebar-link" style="color:var(--blue); font-size:12px;">+ New Portfolio</div>
+          </div>
+          <div class="sidebar-section">
+            <div class="sidebar-title">Quick Actions</div>
+            <div class="sidebar-link">Add Position</div>
+            <div class="sidebar-link">Export CSV</div>
+            <div class="sidebar-link">Backup DB</div>
+          </div>
+        </div>
+        <div class="main-content">Selected portfolio content renders here</div>
+      </div>
+    </div>
+
+    <h3>2.3 Ticker Page Tabs</h3>
+    <div class="tabs-preview">
+      <div class="tabs-bar">
+        <div class="tab active">Overview</div>
+        <div class="tab">Financials</div>
+        <div class="tab">News</div>
+        <div class="tab">Insiders</div>
+        <div class="tab">Holders</div>
+        <div class="tab">Earnings</div>
+      </div>
+      <div class="tabs-content">
+        Tab content loads lazily via HTMX. Only the Overview tab loads on initial page render; other tabs fetch their content when clicked, reducing initial load time from ~8s to ~3s.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ PAGE INVENTORY ═══════════════ -->
+<div id="pages" class="section">
+  <div class="container">
+    <h2 class="section-title">3. Page Inventory</h2>
+    <p class="section-subtitle">Complete inventory of all pages, their purpose, data sources, and priority.</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Page</th>
+          <th>Route</th>
+          <th>Purpose</th>
+          <th>Primary Data Sources</th>
+          <th>Priority</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Dashboard</strong></td>
+          <td><code>/</code></td>
+          <td>Overview: portfolio summary card, watchlist movers, recent news, market snapshot</td>
+          <td>yfinance, pygooglenews</td>
+          <td><span class="badge badge-p0">P0</span></td>
+        </tr>
+        <tr>
+          <td><strong>Screener</strong></td>
+          <td><code>/screener</code></td>
+          <td>Multi-criteria stock filter with sortable results table</td>
+          <td>finvizfinance, tvscreener</td>
+          <td><span class="badge badge-p0">P0</span></td>
+        </tr>
+        <tr>
+          <td><strong>Ticker View</strong></td>
+          <td><code>/ticker/{sym}</code></td>
+          <td>Deep-dive research page with tabbed panels for all data points</td>
+          <td>yfinance, finvizfinance, pygooglenews</td>
+          <td><span class="badge badge-p0">P0</span></td>
+        </tr>
+        <tr>
+          <td><strong>Portfolio</strong></td>
+          <td><code>/portfolio</code></td>
+          <td>Position tracking, P&L, allocation charts</td>
+          <td>SQLite, yfinance (prices)</td>
+          <td><span class="badge badge-p0">P0</span></td>
+        </tr>
+        <tr>
+          <td><strong>Watchlist</strong></td>
+          <td><code>/watchlist</code></td>
+          <td>Tracked tickers with live prices and quick metrics</td>
+          <td>SQLite, yfinance, finvizfinance</td>
+          <td><span class="badge badge-p0">P0</span></td>
+        </tr>
+        <tr>
+          <td><strong>News Feed</strong></td>
+          <td><code>/news</code></td>
+          <td>Aggregated news from portfolio + watchlist + custom queries</td>
+          <td>pygooglenews, finvizfinance</td>
+          <td><span class="badge badge-p0">P0</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Ticker View — Tab Inventory</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Tab</th>
+          <th>HTMX Partial</th>
+          <th>Content</th>
+          <th>Load Strategy</th>
+          <th>Phase</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Overview</strong></td>
+          <td>Inline (no partial)</td>
+          <td>Company header, key metrics grid (12 metrics), price chart, quick stats</td>
+          <td>Eager (loads with page)</td>
+          <td><span class="badge badge-p0">Phase 1</span></td>
+        </tr>
+        <tr>
+          <td><strong>Financials</strong></td>
+          <td><code>/hx/ticker/{sym}/financials</code></td>
+          <td>Income statement, balance sheet, cash flow — toggle annual/quarterly</td>
+          <td>Lazy (on tab click)</td>
+          <td><span class="badge badge-p0">Phase 1</span></td>
+        </tr>
+        <tr>
+          <td><strong>News</strong></td>
+          <td><code>/hx/ticker/{sym}/news</code></td>
+          <td>Latest 20 news items, deduplicated, with source + date + link</td>
+          <td>Lazy (on tab click)</td>
+          <td><span class="badge badge-p0">Phase 1</span></td>
+        </tr>
+        <tr>
+          <td><strong>Insiders</strong></td>
+          <td><code>/hx/ticker/{sym}/insiders</code></td>
+          <td>Transaction table: date, name, title, type, shares, value</td>
+          <td>Lazy (on tab click)</td>
+          <td><span class="badge badge-p0">Phase 1</span></td>
+        </tr>
+        <tr>
+          <td><strong>Holders</strong></td>
+          <td><code>/hx/ticker/{sym}/holders</code></td>
+          <td>Top 10 institutional + mutual fund holders</td>
+          <td>Lazy (on tab click)</td>
+          <td><span class="badge badge-p1">Phase 2</span></td>
+        </tr>
+        <tr>
+          <td><strong>Earnings</strong></td>
+          <td><code>/hx/ticker/{sym}/earnings</code></td>
+          <td>Past 8 quarters EPS actual vs estimate + next date</td>
+          <td>Lazy (on tab click)</td>
+          <td><span class="badge badge-p1">Phase 2</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════════ CONTENT HIERARCHY ═══════════════ -->
+<div id="content" class="section">
+  <div class="container">
+    <h2 class="section-title">4. Content Hierarchy per Page</h2>
+    <p class="section-subtitle">What content appears on each page, in priority order (top to bottom = most to least prominent).</p>
+
+    <div class="content-hierarchy">
+      <div class="ch-card">
+        <h4><span class="icon" style="background:var(--blue-light);color:var(--blue);">D</span> Dashboard (/)</h4>
+        <ul>
+          <li>Portfolio summary card (total value, daily P&L, % change)</li>
+          <li>Top movers from watchlist (biggest gainers/losers)</li>
+          <li>Recent news feed (5 items, from portfolio + watchlist tickers)</li>
+          <li>Market snapshot (S&P 500, NASDAQ, DOW — sparklines)</li>
+          <li>Quick actions: search ticker, add position, open screener</li>
+        </ul>
+      </div>
+
+      <div class="ch-card">
+        <h4><span class="icon" style="background:var(--green-light);color:var(--green);">S</span> Screener (/screener)</h4>
+        <ul>
+          <li>Filter panel (collapsible, left sidebar or top)</li>
+          <li class="sub">Category groups: Valuation, Profitability, Growth, Technical, Ownership</li>
+          <li class="sub">Preset selector dropdown + save button</li>
+          <li>Results table (sortable columns, paginated)</li>
+          <li class="sub">Columns: Ticker, Name, Price, Change%, MktCap, P/E, EPS, Volume</li>
+          <li>Results count + export CSV button</li>
+        </ul>
+      </div>
+
+      <div class="ch-card">
+        <h4><span class="icon" style="background:var(--amber-light);color:var(--amber);">T</span> Ticker (/ticker/{sym})</h4>
+        <ul>
+          <li>Company header bar (logo area, name, price, change, add-to-watchlist)</li>
+          <li>Key metrics grid (2 rows × 6 columns of snapshot values)</li>
+          <li>Tab bar: Overview | Financials | News | Insiders | Holders | Earnings</li>
+          <li class="sub">Overview: price chart + company description + peers</li>
+          <li class="sub">Financials: 3 statement tables (annual/quarterly toggle)</li>
+          <li class="sub">News: scrollable list of 20 items</li>
+          <li class="sub">Insiders: transaction table</li>
+          <li class="sub">Holders: institutional + mutual fund tables</li>
+          <li class="sub">Earnings: EPS chart + upcoming date</li>
+        </ul>
+      </div>
+
+      <div class="ch-card">
+        <h4><span class="icon" style="background:var(--purple-light);color:var(--purple);">P</span> Portfolio (/portfolio)</h4>
+        <ul>
+          <li>Portfolio selector sidebar (switch between portfolios)</li>
+          <li>Summary bar (total value, total P&L $, total P&L %, day change)</li>
+          <li>Allocation charts (sector donut + position size bar)</li>
+          <li>Positions table (sortable: ticker, shares, cost, price, P&L)</li>
+          <li class="sub">Inline edit / delete per row</li>
+          <li>Add position form (modal or inline)</li>
+          <li>Performance chart (total value over time) [P1]</li>
+        </ul>
+      </div>
+
+      <div class="ch-card">
+        <h4><span class="icon" style="background:var(--red-light);color:var(--red);">W</span> Watchlist (/watchlist)</h4>
+        <ul>
+          <li>Watchlist selector tabs (multiple named watchlists)</li>
+          <li>Add ticker input (with autocomplete)</li>
+          <li>Watchlist table</li>
+          <li class="sub">Columns: Ticker, Price, Change%, 52W Range, P/E, Sparkline, Notes</li>
+          <li class="sub">Remove button per row</li>
+          <li>Last refreshed timestamp + manual refresh button</li>
+        </ul>
+      </div>
+
+      <div class="ch-card">
+        <h4><span class="icon" style="background:var(--green-light);color:var(--green);">N</span> News (/news)</h4>
+        <ul>
+          <li>Filter bar: All | Portfolio | Watchlist | Custom Search</li>
+          <li>Search input for custom news queries</li>
+          <li>News list (card layout)</li>
+          <li class="sub">Each card: title, source, date, associated ticker badge, link</li>
+          <li>Infinite scroll or "Load more" pagination</li>
+          <li>Source filter dropdown [P1]</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ USER FLOWS ═══════════════ -->
+<div id="flows" class="section">
+  <div class="container">
+    <h2 class="section-title">5. User Flows</h2>
+    <p class="section-subtitle">Key user journeys through the application, showing decision points and system behavior.</p>
+
+    <!-- Flow 1: Screener to Research -->
+    <h3>5.1 Discovery Flow: Screener → Research → Watchlist</h3>
+    <p>The primary discovery workflow: user finds stocks via screener, researches them, and tracks interesting ones.</p>
+    <div class="flow">
+      <div class="flow-box action">Navigate to Screener</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box action">Set filter criteria (P/E &lt; 20, MktCap &gt; 10B, etc.)</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box decision">Load saved preset? Or build from scratch?</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box system">System: POST /hx/screener/results → fetch from finvizfinance/tvscreener → cache 15min → return HTML table</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box action">Review results, sort by column, paginate</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box action">Click ticker symbol (e.g., "NVDA")</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box system">System: GET /ticker/NVDA → load profile + metrics from cache/API → render Overview tab</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box action">Browse tabs: check Financials, read News, review Insiders</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box decision">Interested in this stock?</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-branch">
+        <div>
+          <div class="flow-label">Yes</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-box result">Click "Add to Watchlist" → ticker saved to active watchlist</div>
+        </div>
+        <div>
+          <div class="flow-label">No</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-box">Back to Screener results (browser back or nav)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Flow 2: Portfolio Management -->
+    <h3>5.2 Portfolio Management Flow</h3>
+    <p>Adding a new position and monitoring portfolio health.</p>
+    <div class="flow">
+      <div class="flow-box action">Navigate to Portfolio</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box action">Select portfolio from sidebar (or create new)</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box action">Click "Add Position"</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box action">Enter: Ticker (AAPL), Shares (50), Avg Cost ($178.50), Date</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box system">System: Validate ticker via yfinance → save to SQLite → fetch current price → compute P&L</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box decision">Validation passes?</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-branch">
+        <div>
+          <div class="flow-label">Yes</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-box result">Position added → table refreshes via HTMX → allocation charts update</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-box system">System: APScheduler includes new ticker in 15-min background refresh cycle</div>
+        </div>
+        <div>
+          <div class="flow-label">Invalid ticker</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-box error">Error: "Ticker not found" — form stays open, field highlighted</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Flow 3: Daily Research Routine -->
+    <h3>5.3 Daily Research Routine</h3>
+    <p>Typical daily workflow for checking positions and staying informed.</p>
+    <div class="flow">
+      <div class="flow-box action">Open StockPulse (localhost:8000)</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box system">System: Dashboard loads → portfolio summary (cached), watchlist movers (cached), news (cached or refresh if >10min)</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box action">Scan portfolio summary: total value, daily P&L</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box decision">Any significant movers?</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-branch">
+        <div>
+          <div class="flow-label">Yes — big drop</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-box action">Click ticker → Ticker View</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-box action">Check News tab for catalysts</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-box action">Check Insiders tab for recent selling</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-box decision">Take action?</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-box">Update position / add note / continue monitoring</div>
+        </div>
+        <div>
+          <div class="flow-label">No — all normal</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-box action">Scan news feed for relevant headlines</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-box result">Click interesting articles → opens in new tab</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Flow 4: Data Fetching (System Flow) -->
+    <h3>5.4 System Flow: Data Fetching Pipeline</h3>
+    <p>How the backend resolves a data request through cache → primary provider → fallback.</p>
+    <div class="flow">
+      <div class="flow-box action">Router receives request for ticker data panel</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box system">DataService.get_analyst_ratings("AAPL")</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box decision">Cache hit? (key: "analyst:AAPL", TTL: 1hr)</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-branch">
+        <div>
+          <div class="flow-label">Cache HIT</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-box result">Return cached data immediately (~5ms)</div>
+        </div>
+        <div>
+          <div class="flow-label">Cache MISS</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-box system">Call primary: finvizfinance.get_analyst_ratings("AAPL")</div>
+          <div class="flow-arrow">↓</div>
+          <div class="flow-box decision">Primary succeeds?</div>
+          <div class="flow-arrow">↓</div>
+          <div style="display:flex; gap:32px;">
+            <div style="display:flex; flex-direction:column; align-items:center;">
+              <div class="flow-label">Yes</div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-box result">Cache result → return data</div>
+            </div>
+            <div style="display:flex; flex-direction:column; align-items:center;">
+              <div class="flow-label">No (timeout/error)</div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-box system">Call fallback: yfinance.get_analyst_ratings("AAPL")</div>
+              <div class="flow-arrow">↓</div>
+              <div style="display:flex; gap:32px;">
+                <div style="display:flex; flex-direction:column; align-items:center;">
+                  <div class="flow-label">OK</div>
+                  <div class="flow-arrow">↓</div>
+                  <div class="flow-box result">Cache + return</div>
+                </div>
+                <div style="display:flex; flex-direction:column; align-items:center;">
+                  <div class="flow-label">Also fails</div>
+                  <div class="flow-arrow">↓</div>
+                  <div class="flow-box error">Return PartialDataResult (error flag)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div style="background:var(--gray-100); padding:32px 0; text-align:center; color:var(--gray-600); font-size:13px; border-top:1px solid var(--gray-200);">
+  StockPulse Information Architecture v1.0 · February 2026
+</div>
+
+</body>
+</html>

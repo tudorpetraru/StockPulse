@@ -1,0 +1,37 @@
+<!-- Insiders tab partial -->
+{% if status == "error" %}
+<div class="alert alert-error">❌ Insider data temporarily unavailable. <a hx-get="/hx/ticker/{{ symbol }}/insiders"
+        hx-target="#tab-content" hx-swap="innerHTML">Click to retry.</a></div>
+{% elif insiders %}
+<div class="card" style="padding:0;overflow:hidden;">
+    <table class="wf-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Name</th>
+                <th>Title</th>
+                <th>Type</th>
+                <th>Shares</th>
+                <th>Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in insiders %}
+            <tr>
+                <td>{{ t.date }}</td>
+                <td style="font-weight:500;">{{ t.name }}</td>
+                <td>{{ t.title }}</td>
+                <td class="{% if t.type == 'Purchase' %}positive{% elif t.type == 'Sale' %}negative{% endif %}">{{
+                    t.type }}</td>
+                <td>{{ "{:,.0f}".format(t.shares) if t.shares else "N/A" }}</td>
+                <td>{{ "${:,.0f}".format(t.value) if t.value else "N/A" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="card">
+    <p style="color:var(--gray-500);font-size:13px;">No insider transactions found for {{ symbol }}.</p>
+</div>
+{% endif %}

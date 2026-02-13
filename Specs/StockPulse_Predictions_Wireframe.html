@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockPulse — Prediction Tracking Wireframes</title>
+<style>
+  :root {
+    --navy: #1B2A4A; --blue: #1976D2; --blue-light: #E3F2FD; --blue-bg: #F0F7FF;
+    --green: #2E7D32; --green-light: #E8F5E9;
+    --red: #C62828; --red-light: #FFEBEE;
+    --amber: #F57F17; --amber-light: #FFF8E1;
+    --purple: #7B1FA2; --purple-light: #F3E5F5;
+    --gray-50: #FAFAFA; --gray-100: #F5F5F5; --gray-200: #EEEEEE;
+    --gray-300: #E0E0E0; --gray-400: #BDBDBD; --gray-500: #9E9E9E;
+    --gray-600: #757575; --gray-700: #616161; --gray-800: #424242;
+    --text: #212121; --bg: #F8F9FA;
+    --radius: 8px; --radius-sm: 4px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08); --shadow-md: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color:var(--text); background:#E8EBF0; line-height:1.5; }
+
+  .page-nav { position:fixed; top:0; left:0; right:0; background:var(--navy); z-index:1000; padding:12px 24px; display:flex; align-items:center; gap:16px; box-shadow:0 2px 8px rgba(0,0,0,0.2); }
+  .page-nav h1 { color:white; font-size:16px; font-weight:700; }
+  .page-nav .divider { width:1px; height:24px; background:rgba(255,255,255,0.2); }
+  .page-btn { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:rgba(255,255,255,0.8); padding:6px 16px; border-radius:var(--radius-sm); font-size:13px; cursor:pointer; transition:all 0.15s; }
+  .page-btn:hover { background:rgba(255,255,255,0.2); color:white; }
+  .page-btn.active { background:var(--blue); border-color:var(--blue); color:white; font-weight:600; }
+
+  .wireframe-container { padding:72px 24px 48px; max-width:1400px; margin:0 auto; }
+  .wireframe-label { text-align:center; font-size:13px; color:var(--gray-600); margin-bottom:16px; }
+  .wireframe-label strong { color:var(--navy); font-size:15px; }
+
+  .wf { display:none; background:white; border-radius:12px; box-shadow:var(--shadow-md); overflow:hidden; border:1px solid var(--gray-200); }
+  .wf.active { display:block; }
+
+  .wf-nav { display:flex; align-items:center; background:var(--navy); padding:0 20px; height:48px; }
+  .wf-nav .logo { color:white; font-weight:700; font-size:15px; padding-right:20px; border-right:1px solid rgba(255,255,255,0.15); margin-right:8px; }
+  .wf-nav .nav-link { color:rgba(255,255,255,0.6); font-size:13px; padding:14px 14px; cursor:default; }
+  .wf-nav .nav-link.active { color:white; border-bottom:2px solid white; }
+  .wf-nav .search { margin-left:auto; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.15); border-radius:var(--radius-sm); padding:5px 12px; color:rgba(255,255,255,0.5); font-size:12px; width:200px; }
+
+  .wf-body { padding:24px; background:var(--bg); min-height:600px; }
+
+  .card { background:white; border:1px solid var(--gray-200); border-radius:var(--radius); padding:20px; margin-bottom:16px; box-shadow:var(--shadow); }
+  .card-title { font-size:13px; font-weight:700; color:var(--gray-500); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; }
+
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+  .grid-4 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:16px; }
+
+  .stat { text-align:center; }
+  .stat-value { font-size:24px; font-weight:700; color:var(--navy); }
+  .stat-label { font-size:12px; color:var(--gray-500); margin-top:4px; }
+
+  .wf-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .wf-table th { background:var(--gray-100); padding:10px 12px; text-align:left; font-size:12px; font-weight:600; color:var(--gray-600); text-transform:uppercase; letter-spacing:0.3px; border-bottom:2px solid var(--gray-200); }
+  .wf-table td { padding:10px 12px; border-bottom:1px solid var(--gray-100); }
+  .wf-table tr:hover td { background:var(--blue-bg); }
+  .ticker { color:var(--blue); font-weight:600; }
+  .positive { color:var(--green); font-weight:500; }
+  .negative { color:var(--red); font-weight:500; }
+
+  .wf-tabs { display:flex; border-bottom:2px solid var(--gray-200); margin-bottom:20px; }
+  .wf-tab { padding:10px 20px; font-size:13px; color:var(--gray-500); cursor:default; border-bottom:2px solid transparent; margin-bottom:-2px; }
+  .wf-tab.active { color:var(--blue); border-bottom-color:var(--blue); font-weight:600; }
+
+  .chart-placeholder { background:var(--gray-50); border:2px dashed var(--gray-300); border-radius:var(--radius); display:flex; align-items:center; justify-content:center; color:var(--gray-400); font-size:14px; padding:20px; flex-direction:column; gap:8px; }
+
+  .btn { display:inline-flex; align-items:center; gap:6px; padding:7px 16px; border-radius:var(--radius-sm); font-size:13px; font-weight:500; border:1px solid var(--gray-300); background:white; color:var(--gray-700); cursor:default; }
+  .btn-primary { background:var(--blue); color:white; border-color:var(--blue); }
+  .btn-sm { padding:4px 10px; font-size:12px; }
+
+  .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+  .badge-green { background:var(--green-light); color:var(--green); }
+  .badge-red { background:var(--red-light); color:var(--red); }
+  .badge-amber { background:var(--amber-light); color:var(--amber); }
+  .badge-blue { background:var(--blue-light); color:var(--blue); }
+  .badge-gray { background:var(--gray-100); color:var(--gray-600); }
+  .badge-purple { background:var(--purple-light); color:var(--purple); }
+
+  .metric { padding:10px; background:var(--gray-50); border-radius:var(--radius-sm); border:1px solid var(--gray-200); text-align:center; }
+  .metric-label { font-size:11px; color:var(--gray-500); text-transform:uppercase; }
+  .metric-value { font-size:15px; font-weight:600; color:var(--navy); margin-top:2px; }
+
+  .period-selector { display:flex; gap:4px; margin-bottom:12px; }
+  .period-btn { padding:4px 12px; font-size:12px; border-radius:var(--radius-sm); background:var(--gray-100); color:var(--gray-600); border:1px solid var(--gray-200); cursor:default; }
+  .period-btn.active { background:var(--blue); color:white; border-color:var(--blue); }
+
+  .score-bar { height:8px; border-radius:4px; background:var(--gray-200); overflow:hidden; width:100px; display:inline-block; vertical-align:middle; margin-right:6px; }
+  .score-bar-fill { height:100%; border-radius:4px; }
+  .score-high .score-bar-fill { background:var(--green); }
+  .score-mid .score-bar-fill { background:var(--amber); }
+  .score-low .score-bar-fill { background:var(--red); }
+
+  .prediction-item { padding:14px 0; border-bottom:1px solid var(--gray-100); display:flex; align-items:flex-start; gap:16px; }
+  .prediction-item:last-child { border-bottom:none; }
+  .prediction-date { font-size:12px; color:var(--gray-500); width:80px; flex-shrink:0; }
+  .prediction-content { flex:1; }
+  .prediction-firm { font-weight:600; font-size:14px; color:var(--navy); }
+  .prediction-detail { font-size:13px; color:var(--gray-600); margin-top:4px; }
+  .prediction-outcome { text-align:right; min-width:120px; }
+
+  .company-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; }
+  .company-name { font-size:22px; font-weight:700; color:var(--navy); }
+  .company-sub { font-size:13px; color:var(--gray-500); margin-top:2px; }
+  .company-price { text-align:right; }
+  .company-price .price { font-size:28px; font-weight:700; color:var(--navy); }
+  .company-price .change { font-size:15px; margin-top:2px; }
+
+  .cold-start { background:var(--blue-light); border:1px solid #90CAF9; border-radius:var(--radius); padding:20px; text-align:center; margin:20px 0; }
+  .cold-start h3 { color:var(--blue); font-size:16px; margin-bottom:8px; }
+  .cold-start p { font-size:13px; color:var(--gray-700); }
+
+  .leaderboard-rank { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; font-size:13px; font-weight:700; }
+  .rank-gold { background:#FFF3E0; color:#E65100; }
+  .rank-silver { background:var(--gray-100); color:var(--gray-700); }
+  .rank-bronze { background:#EFEBE9; color:#5D4037; }
+  .rank-normal { background:var(--gray-50); color:var(--gray-500); }
+
+  .annotation { background:var(--amber-light); border:1px solid #FFE082; border-radius:var(--radius-sm); padding:8px 12px; font-size:12px; color:var(--amber); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+</style>
+</head>
+<body>
+
+<div class="page-nav">
+  <h1>Prediction Tracking Wireframes</h1>
+  <div class="divider"></div>
+  <button class="page-btn active" onclick="show('predictions')">Predictions Tab</button>
+  <button class="page-btn" onclick="show('leaderboard')">Analyst Leaderboard</button>
+  <button class="page-btn" onclick="show('coldstart')">Cold Start State</button>
+  <button class="page-btn" onclick="show('dashboard')">Dashboard Widget</button>
+</div>
+
+<div class="wireframe-container">
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- PREDICTIONS TAB (on Ticker Page) -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="wireframe-label"><strong>Predictions Tab</strong> — Ticker page (/ticker/NVDA), 7th tab, loaded via HTMX</div>
+<div id="wf-predictions" class="wf active">
+  <div class="wf-nav">
+    <div class="logo">StockPulse</div>
+    <span class="nav-link">Dashboard</span>
+    <span class="nav-link">Screener</span>
+    <span class="nav-link">Portfolio</span>
+    <span class="nav-link">Watchlist</span>
+    <span class="nav-link">News</span>
+    <input class="search" placeholder="Search ticker... (Ctrl+K)" readonly>
+  </div>
+  <div class="wf-body">
+    <!-- Company Header (compact) -->
+    <div class="card" style="padding:16px 20px;">
+      <div class="company-header" style="margin-bottom:0;">
+        <div>
+          <div class="company-name">NVIDIA Corporation <span style="font-size:14px; color:var(--gray-500); font-weight:400;">NVDA</span></div>
+          <div class="company-sub">Technology · Semiconductors · NASDAQ</div>
+        </div>
+        <div class="company-price">
+          <div class="price">$142.56</div>
+          <div class="change positive">+$5.74 (+4.20%)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs — Predictions is active -->
+    <div class="wf-tabs">
+      <div class="wf-tab">Overview</div>
+      <div class="wf-tab">Financials</div>
+      <div class="wf-tab">News</div>
+      <div class="wf-tab">Insiders</div>
+      <div class="wf-tab">Holders</div>
+      <div class="wf-tab">Earnings</div>
+      <div class="wf-tab active">Predictions</div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="card">
+      <div class="card-title">Prediction Tracking Summary — NVDA</div>
+      <div class="grid-4">
+        <div class="stat">
+          <div class="stat-value">42</div>
+          <div class="stat-label">Active Predictions</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">28</div>
+          <div class="stat-label">Resolved (12mo+)</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value positive" style="color:var(--green)">71%</div>
+          <div class="stat-label">Consensus Accuracy</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">$165.00</div>
+          <div class="stat-label">Current Consensus Target</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Consensus Timeline Chart -->
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div class="card-title" style="margin-bottom:0;">Consensus Target vs Actual Price</div>
+        <div class="period-selector" style="margin-bottom:0;">
+          <div class="period-btn">1Y</div>
+          <div class="period-btn active">2Y</div>
+          <div class="period-btn">All</div>
+        </div>
+      </div>
+      <div class="chart-placeholder" style="height:300px;">
+        <div style="font-size:32px;">📊</div>
+        <div style="font-weight:600;">Plotly: Consensus Target Band vs Actual Price</div>
+        <div style="font-size:12px; max-width:600px; text-align:center; line-height:1.6;">
+          <strong>Blue line:</strong> Actual stock price over time<br>
+          <strong>Green shaded band:</strong> Consensus target range (low → high) from 12 months prior<br>
+          <strong>Orange dashed line:</strong> Average consensus target from 12 months prior<br>
+          <strong>Vertical markers:</strong> Where predictions resolved (green dot = accurate, red dot = missed)
+        </div>
+      </div>
+      <div style="font-size:12px; color:var(--gray-500); margin-top:8px; text-align:center;">
+        Data collection started Feb 13, 2026. Chart will populate as snapshots accumulate. Accuracy markers appear after 12 months.
+      </div>
+    </div>
+
+    <!-- Analyst Scorecard -->
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div class="card-title" style="margin-bottom:0;">Analyst Scorecard — NVDA Coverage</div>
+        <span style="font-size:12px; color:var(--gray-500);">Sorted by Composite Score ↓</span>
+      </div>
+      <table class="wf-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Firm</th>
+            <th>Predictions</th>
+            <th>Success Rate ↕</th>
+            <th>Direction ↕</th>
+            <th>Avg Error ↕</th>
+            <th>Score ↕</th>
+            <th>Latest</th>
+            <th>Target</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="leaderboard-rank rank-gold">1</span></td>
+            <td style="font-weight:600;">Goldman Sachs</td>
+            <td>12</td>
+            <td>
+              <span class="score-bar score-high"><span class="score-bar-fill" style="width:83%"></span></span>
+              <span class="positive">83%</span>
+            </td>
+            <td><span class="positive">92%</span></td>
+            <td>6.2%</td>
+            <td><span class="badge badge-green">87</span></td>
+            <td><span class="badge badge-green">Buy</span></td>
+            <td>$185</td>
+          </tr>
+          <tr>
+            <td><span class="leaderboard-rank rank-silver">2</span></td>
+            <td style="font-weight:600;">Morgan Stanley</td>
+            <td>10</td>
+            <td>
+              <span class="score-bar score-high"><span class="score-bar-fill" style="width:70%"></span></span>
+              <span class="positive">70%</span>
+            </td>
+            <td><span class="positive">80%</span></td>
+            <td>9.8%</td>
+            <td><span class="badge badge-green">76</span></td>
+            <td><span class="badge badge-green">Buy</span></td>
+            <td>$200</td>
+          </tr>
+          <tr>
+            <td><span class="leaderboard-rank rank-bronze">3</span></td>
+            <td style="font-weight:600;">JP Morgan</td>
+            <td>8</td>
+            <td>
+              <span class="score-bar score-mid"><span class="score-bar-fill" style="width:63%"></span></span>
+              <span>63%</span>
+            </td>
+            <td><span class="positive">75%</span></td>
+            <td>12.4%</td>
+            <td><span class="badge badge-amber">68</span></td>
+            <td><span class="badge badge-green">Overweight</span></td>
+            <td>$170</td>
+          </tr>
+          <tr>
+            <td><span class="leaderboard-rank rank-normal">4</span></td>
+            <td style="font-weight:600;">UBS</td>
+            <td>9</td>
+            <td>
+              <span class="score-bar score-mid"><span class="score-bar-fill" style="width:56%"></span></span>
+              <span>56%</span>
+            </td>
+            <td><span>67%</span></td>
+            <td>15.1%</td>
+            <td><span class="badge badge-amber">59</span></td>
+            <td><span class="badge badge-amber">Hold</span></td>
+            <td>$150</td>
+          </tr>
+          <tr>
+            <td><span class="leaderboard-rank rank-normal">5</span></td>
+            <td style="font-weight:600;">Bernstein</td>
+            <td>7</td>
+            <td>
+              <span class="score-bar score-low"><span class="score-bar-fill" style="width:29%"></span></span>
+              <span class="negative">29%</span>
+            </td>
+            <td><span class="negative">43%</span></td>
+            <td>28.7%</td>
+            <td><span class="badge badge-red">34</span></td>
+            <td><span class="badge badge-red">Sell</span></td>
+            <td>$98</td>
+          </tr>
+          <tr>
+            <td><span class="leaderboard-rank rank-normal">—</span></td>
+            <td style="font-weight:600; color:var(--gray-500);">Wedbush</td>
+            <td style="color:var(--gray-500);">3</td>
+            <td colspan="4" style="color:var(--gray-500); font-style:italic;">Insufficient data (min 5 predictions required)</td>
+            <td><span class="badge badge-green">Buy</span></td>
+            <td>$175</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Prediction History Feed -->
+    <div class="card">
+      <div class="card-title">Prediction History</div>
+      <div style="display:flex; gap:8px; margin-bottom:16px;">
+        <button class="btn btn-sm" style="background:var(--blue); color:white; border-color:var(--blue);">All</button>
+        <button class="btn btn-sm">Resolved</button>
+        <button class="btn btn-sm">Pending</button>
+        <select class="btn btn-sm" style="padding:4px 8px;"><option>All Firms</option><option>Goldman Sachs</option><option>Morgan Stanley</option></select>
+      </div>
+
+      <div class="prediction-item">
+        <div class="prediction-date">Feb 10<br>2026</div>
+        <div class="prediction-content">
+          <div class="prediction-firm">Goldman Sachs <span class="badge badge-green" style="margin-left:6px;">Buy</span></div>
+          <div class="prediction-detail">Reiterated Buy with target <strong>$185</strong> (implied +29.8% from $142.56)</div>
+          <div class="prediction-detail" style="color:var(--gray-400);">Resolves: Feb 10, 2027</div>
+        </div>
+        <div class="prediction-outcome">
+          <span class="badge badge-blue">Pending</span>
+          <div style="font-size:11px; color:var(--gray-500); margin-top:4px;">362 days left</div>
+        </div>
+      </div>
+
+      <div class="prediction-item">
+        <div class="prediction-date">Feb 8<br>2026</div>
+        <div class="prediction-content">
+          <div class="prediction-firm">Morgan Stanley <span class="badge badge-green" style="margin-left:6px;">Buy</span></div>
+          <div class="prediction-detail">Upgraded to Buy, target raised to <strong>$200</strong> (implied +44.6% from $138.30)</div>
+          <div class="prediction-detail" style="color:var(--gray-400);">Resolves: Feb 8, 2027</div>
+        </div>
+        <div class="prediction-outcome">
+          <span class="badge badge-blue">Pending</span>
+          <div style="font-size:11px; color:var(--gray-500); margin-top:4px;">360 days left</div>
+        </div>
+      </div>
+
+      <div class="prediction-item">
+        <div class="prediction-date">Jan 15<br>2025</div>
+        <div class="prediction-content">
+          <div class="prediction-firm">Goldman Sachs <span class="badge badge-green" style="margin-left:6px;">Buy</span></div>
+          <div class="prediction-detail">Initiated Buy with target <strong>$155</strong> (implied +42.2% from $109.00)</div>
+          <div class="prediction-detail">Actual price on Jan 15, 2026: <strong>$137.80</strong> (actual return: +26.4%)</div>
+        </div>
+        <div class="prediction-outcome">
+          <span class="badge badge-green">✓ Accurate</span>
+          <div style="font-size:11px; color:var(--green); margin-top:4px;">Error: 8.2%</div>
+        </div>
+      </div>
+
+      <div class="prediction-item">
+        <div class="prediction-date">Jan 10<br>2025</div>
+        <div class="prediction-content">
+          <div class="prediction-firm">Bernstein <span class="badge badge-red" style="margin-left:6px;">Sell</span></div>
+          <div class="prediction-detail">Maintained Sell with target <strong>$75</strong> (implied -31.2% from $109.00)</div>
+          <div class="prediction-detail">Actual price on Jan 10, 2026: <strong>$135.20</strong> (actual return: +24.0%)</div>
+        </div>
+        <div class="prediction-outcome">
+          <span class="badge badge-red">✗ Missed</span>
+          <div style="font-size:11px; color:var(--red); margin-top:4px;">Error: 55.2%</div>
+        </div>
+      </div>
+
+      <div style="text-align:center; margin-top:12px;">
+        <button class="btn btn-sm">Load More</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- ANALYST LEADERBOARD (Global Page) -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="wf-leaderboard" class="wf">
+  <div class="wf-nav">
+    <div class="logo">StockPulse</div>
+    <span class="nav-link">Dashboard</span>
+    <span class="nav-link">Screener</span>
+    <span class="nav-link">Portfolio</span>
+    <span class="nav-link">Watchlist</span>
+    <span class="nav-link">News</span>
+    <span class="nav-link active">Analysts</span>
+    <input class="search" placeholder="Search ticker... (Ctrl+K)" readonly>
+  </div>
+  <div class="wf-body">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h2 style="font-size:20px; color:var(--navy);">Analyst Leaderboard</h2>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <select style="border:1px solid var(--gray-300); border-radius:var(--radius-sm); padding:6px 10px; font-size:13px;">
+          <option>All Sectors</option><option>Technology</option><option>Healthcare</option><option>Financials</option>
+        </select>
+        <select style="border:1px solid var(--gray-300); border-radius:var(--radius-sm); padding:6px 10px; font-size:13px;">
+          <option>All Tickers</option><option>NVDA</option><option>AAPL</option><option>MSFT</option>
+        </select>
+        <span style="font-size:12px; color:var(--gray-500);">Based on 847 resolved predictions</span>
+      </div>
+    </div>
+
+    <!-- Top 3 Highlight -->
+    <div class="grid-3" style="margin-bottom:16px;">
+      <div class="card" style="text-align:center; border:2px solid #FFE082; background:#FFFDE7;">
+        <div style="font-size:28px; margin-bottom:4px;">🥇</div>
+        <div style="font-size:18px; font-weight:700; color:var(--navy);">Goldman Sachs</div>
+        <div style="font-size:13px; color:var(--gray-600); margin:4px 0 12px;">234 predictions · 18 tickers</div>
+        <div class="grid-3" style="gap:8px;">
+          <div><div style="font-size:20px; font-weight:700; color:var(--green);">78%</div><div style="font-size:11px; color:var(--gray-500);">Success</div></div>
+          <div><div style="font-size:20px; font-weight:700; color:var(--green);">88%</div><div style="font-size:11px; color:var(--gray-500);">Direction</div></div>
+          <div><div style="font-size:20px; font-weight:700; color:var(--navy);">84</div><div style="font-size:11px; color:var(--gray-500);">Score</div></div>
+        </div>
+      </div>
+      <div class="card" style="text-align:center; border:2px solid var(--gray-300); background:var(--gray-50);">
+        <div style="font-size:28px; margin-bottom:4px;">🥈</div>
+        <div style="font-size:18px; font-weight:700; color:var(--navy);">Morgan Stanley</div>
+        <div style="font-size:13px; color:var(--gray-600); margin:4px 0 12px;">198 predictions · 16 tickers</div>
+        <div class="grid-3" style="gap:8px;">
+          <div><div style="font-size:20px; font-weight:700; color:var(--green);">72%</div><div style="font-size:11px; color:var(--gray-500);">Success</div></div>
+          <div><div style="font-size:20px; font-weight:700; color:var(--green);">85%</div><div style="font-size:11px; color:var(--gray-500);">Direction</div></div>
+          <div><div style="font-size:20px; font-weight:700; color:var(--navy);">79</div><div style="font-size:11px; color:var(--gray-500);">Score</div></div>
+        </div>
+      </div>
+      <div class="card" style="text-align:center; border:2px solid #D7CCC8; background:#EFEBE9;">
+        <div style="font-size:28px; margin-bottom:4px;">🥉</div>
+        <div style="font-size:18px; font-weight:700; color:var(--navy);">JP Morgan</div>
+        <div style="font-size:13px; color:var(--gray-600); margin:4px 0 12px;">187 predictions · 15 tickers</div>
+        <div class="grid-3" style="gap:8px;">
+          <div><div style="font-size:20px; font-weight:700; color:var(--green);">68%</div><div style="font-size:11px; color:var(--gray-500);">Success</div></div>
+          <div><div style="font-size:20px; font-weight:700;">81%</div><div style="font-size:11px; color:var(--gray-500);">Direction</div></div>
+          <div><div style="font-size:20px; font-weight:700; color:var(--navy);">74</div><div style="font-size:11px; color:var(--gray-500);">Score</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Full Leaderboard Table -->
+    <div class="card" style="padding:0; overflow:hidden;">
+      <table class="wf-table">
+        <thead>
+          <tr>
+            <th>#</th><th>Firm</th><th>Predictions</th><th>Tickers</th>
+            <th>Success Rate ↕</th><th>Direction ↕</th><th>Avg Error ↕</th>
+            <th>Score ↕</th><th>Best Call</th><th>Worst Call</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="leaderboard-rank rank-gold">1</span></td><td style="font-weight:600;">Goldman Sachs</td><td>234</td><td>18</td><td class="positive">78%</td><td class="positive">88%</td><td>7.3%</td><td><span class="badge badge-green">84</span></td><td><span class="ticker">NVDA</span></td><td><span class="ticker">INTC</span></td></tr>
+          <tr><td><span class="leaderboard-rank rank-silver">2</span></td><td style="font-weight:600;">Morgan Stanley</td><td>198</td><td>16</td><td class="positive">72%</td><td class="positive">85%</td><td>9.1%</td><td><span class="badge badge-green">79</span></td><td><span class="ticker">MSFT</span></td><td><span class="ticker">TSLA</span></td></tr>
+          <tr><td><span class="leaderboard-rank rank-bronze">3</span></td><td style="font-weight:600;">JP Morgan</td><td>187</td><td>15</td><td class="positive">68%</td><td class="positive">81%</td><td>11.4%</td><td><span class="badge badge-amber">74</span></td><td><span class="ticker">JPM</span></td><td><span class="ticker">BA</span></td></tr>
+          <tr><td><span class="leaderboard-rank rank-normal">4</span></td><td style="font-weight:600;">Bank of America</td><td>176</td><td>14</td><td>65%</td><td class="positive">79%</td><td>12.8%</td><td><span class="badge badge-amber">70</span></td><td><span class="ticker">AAPL</span></td><td><span class="ticker">META</span></td></tr>
+          <tr><td><span class="leaderboard-rank rank-normal">5</span></td><td style="font-weight:600;">UBS</td><td>156</td><td>13</td><td>61%</td><td>74%</td><td>14.2%</td><td><span class="badge badge-amber">65</span></td><td><span class="ticker">AMZN</span></td><td><span class="ticker">NFLX</span></td></tr>
+          <tr><td><span class="leaderboard-rank rank-normal">6</span></td><td style="font-weight:600;">Citi</td><td>142</td><td>12</td><td>58%</td><td>71%</td><td>16.5%</td><td><span class="badge badge-amber">60</span></td><td><span class="ticker">V</span></td><td><span class="ticker">DIS</span></td></tr>
+          <tr><td><span class="leaderboard-rank rank-normal">7</span></td><td style="font-weight:600;">Bernstein</td><td>98</td><td>9</td><td class="negative">38%</td><td class="negative">52%</td><td>24.8%</td><td><span class="badge badge-red">38</span></td><td><span class="ticker">GOOG</span></td><td><span class="ticker">NVDA</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- COLD START STATE -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="wf-coldstart" class="wf">
+  <div class="wf-nav">
+    <div class="logo">StockPulse</div>
+    <span class="nav-link">Dashboard</span>
+    <span class="nav-link">Screener</span>
+    <span class="nav-link">Portfolio</span>
+    <span class="nav-link">Watchlist</span>
+    <span class="nav-link">News</span>
+    <input class="search" placeholder="Search ticker... (Ctrl+K)" readonly>
+  </div>
+  <div class="wf-body">
+    <div class="annotation">This shows how the Predictions tab looks during the first 12 months while data is being collected.</div>
+
+    <div class="card" style="padding:16px 20px;">
+      <div class="company-header" style="margin-bottom:0;">
+        <div>
+          <div class="company-name">NVIDIA Corporation <span style="font-size:14px; color:var(--gray-500); font-weight:400;">NVDA</span></div>
+          <div class="company-sub">Technology · Semiconductors · NASDAQ</div>
+        </div>
+        <div class="company-price">
+          <div class="price">$142.56</div>
+          <div class="change positive">+$5.74 (+4.20%)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wf-tabs">
+      <div class="wf-tab">Overview</div>
+      <div class="wf-tab">Financials</div>
+      <div class="wf-tab">News</div>
+      <div class="wf-tab">Insiders</div>
+      <div class="wf-tab">Holders</div>
+      <div class="wf-tab">Earnings</div>
+      <div class="wf-tab active">Predictions</div>
+    </div>
+
+    <!-- Cold Start Summary -->
+    <div class="card">
+      <div class="grid-4">
+        <div class="stat">
+          <div class="stat-value">42</div>
+          <div class="stat-label">Predictions Tracking</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" style="color:var(--gray-400);">0</div>
+          <div class="stat-label">Resolved</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" style="color:var(--gray-400);">—</div>
+          <div class="stat-label">Accuracy (pending)</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">$165.00</div>
+          <div class="stat-label">Current Consensus Target</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cold Start Message -->
+    <div class="cold-start">
+      <h3>📊 Building Your Prediction Database</h3>
+      <p>StockPulse has been capturing analyst predictions for <strong>47 days</strong> (since Jan 2, 2026).</p>
+      <p>Accuracy scores require 12 months of data. First results will appear around <strong>January 2027</strong>.</p>
+      <p style="margin-top:12px;">In the meantime, you can see how analyst targets are evolving over time in the chart below.</p>
+    </div>
+
+    <!-- Partial Chart (targets drift only, no accuracy yet) -->
+    <div class="card">
+      <div class="card-title">Consensus Target Trend (Collecting Data)</div>
+      <div class="chart-placeholder" style="height:250px;">
+        <div style="font-size:32px;">📈</div>
+        <div style="font-weight:600;">Plotly: Target Drift Chart</div>
+        <div style="font-size:12px; max-width:500px; text-align:center; line-height:1.6;">
+          <strong>Blue line:</strong> Actual stock price (last 47 days)<br>
+          <strong>Orange line:</strong> Average consensus target (shows how analysts adjust over time)<br>
+          <strong>Gray band:</strong> Low-high target range<br>
+          <em>No accuracy markers yet — first predictions resolve in ~318 days</em>
+        </div>
+      </div>
+    </div>
+
+    <!-- Current analyst targets (already available) -->
+    <div class="card">
+      <div class="card-title">Current Analyst Targets (Awaiting Resolution)</div>
+      <table class="wf-table">
+        <thead>
+          <tr><th>Firm</th><th>Rating</th><th>Target</th><th>Implied Return</th><th>Snapshot Date</th><th>Resolves</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td style="font-weight:600;">Goldman Sachs</td><td><span class="badge badge-green">Buy</span></td><td>$185</td><td class="positive">+29.8%</td><td>Feb 10, 2026</td><td>Feb 10, 2027</td><td><span class="badge badge-blue">Pending</span></td></tr>
+          <tr><td style="font-weight:600;">Morgan Stanley</td><td><span class="badge badge-green">Buy</span></td><td>$200</td><td class="positive">+40.3%</td><td>Feb 8, 2026</td><td>Feb 8, 2027</td><td><span class="badge badge-blue">Pending</span></td></tr>
+          <tr><td style="font-weight:600;">UBS</td><td><span class="badge badge-amber">Hold</span></td><td>$150</td><td class="positive">+5.2%</td><td>Feb 5, 2026</td><td>Feb 5, 2027</td><td><span class="badge badge-blue">Pending</span></td></tr>
+          <tr><td style="font-weight:600;">Bernstein</td><td><span class="badge badge-red">Sell</span></td><td>$98</td><td class="negative">-31.2%</td><td>Feb 3, 2026</td><td>Feb 3, 2027</td><td><span class="badge badge-blue">Pending</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- DASHBOARD WIDGET -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="wf-dashboard" class="wf">
+  <div class="wf-nav">
+    <div class="logo">StockPulse</div>
+    <span class="nav-link active">Dashboard</span>
+    <span class="nav-link">Screener</span>
+    <span class="nav-link">Portfolio</span>
+    <span class="nav-link">Watchlist</span>
+    <span class="nav-link">News</span>
+    <span class="nav-link">Analysts</span>
+    <input class="search" placeholder="Search ticker... (Ctrl+K)" readonly>
+  </div>
+  <div class="wf-body">
+    <div class="annotation">This shows the new "Prediction Tracker" widget added to the Dashboard.</div>
+
+    <div class="grid-2">
+      <!-- Existing dashboard card (abbreviated) -->
+      <div class="card" style="border:1px dashed var(--gray-300); display:flex; align-items:center; justify-content:center; min-height:200px; color:var(--gray-400);">
+        Other dashboard content (portfolio summary, watchlist movers, etc.)
+      </div>
+
+      <!-- NEW: Prediction Tracker Widget -->
+      <div class="card" style="border:2px solid var(--blue-light);">
+        <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+          <span>Prediction Tracker</span>
+          <a href="#" style="font-size:11px; color:var(--blue); text-decoration:none; text-transform:none; font-weight:500; letter-spacing:0;">View Leaderboard →</a>
+        </div>
+
+        <div class="grid-3" style="margin-bottom:16px;">
+          <div style="text-align:center;">
+            <div style="font-size:24px; font-weight:700; color:var(--blue);">342</div>
+            <div style="font-size:11px; color:var(--gray-500);">Tracking</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:24px; font-weight:700; color:var(--green);">18</div>
+            <div style="font-size:11px; color:var(--gray-500);">Resolved This Month</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:24px; font-weight:700; color:var(--green);">72%</div>
+            <div style="font-size:11px; color:var(--gray-500);">Monthly Accuracy</div>
+          </div>
+        </div>
+
+        <div style="font-size:12px; font-weight:600; color:var(--gray-500); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Top Analysts This Month</div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; align-items:center; gap:10px; padding:6px 8px; background:var(--gray-50); border-radius:var(--radius-sm);">
+            <span class="leaderboard-rank rank-gold" style="width:22px; height:22px; font-size:11px;">1</span>
+            <span style="font-size:13px; font-weight:600; flex:1;">Goldman Sachs</span>
+            <span class="badge badge-green" style="font-size:10px;">Score: 84</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; padding:6px 8px; background:var(--gray-50); border-radius:var(--radius-sm);">
+            <span class="leaderboard-rank rank-silver" style="width:22px; height:22px; font-size:11px;">2</span>
+            <span style="font-size:13px; font-weight:600; flex:1;">Morgan Stanley</span>
+            <span class="badge badge-green" style="font-size:10px;">Score: 79</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; padding:6px 8px; background:var(--gray-50); border-radius:var(--radius-sm);">
+            <span class="leaderboard-rank rank-bronze" style="width:22px; height:22px; font-size:11px;">3</span>
+            <span style="font-size:13px; font-weight:600; flex:1;">JP Morgan</span>
+            <span class="badge badge-amber" style="font-size:10px;">Score: 74</span>
+          </div>
+        </div>
+
+        <div style="font-size:12px; font-weight:600; color:var(--gray-500); text-transform:uppercase; letter-spacing:0.5px; margin:12px 0 8px;">Recent Resolutions</div>
+        <div style="font-size:12px; color:var(--gray-700);">
+          <div style="padding:4px 0; display:flex; justify-content:space-between;">
+            <span><strong>GS</strong> on <span class="ticker" style="font-size:12px;">AAPL</span>: target $210 → actual $189</span>
+            <span class="badge badge-green" style="font-size:10px;">✓ 10%</span>
+          </div>
+          <div style="padding:4px 0; display:flex; justify-content:space-between;">
+            <span><strong>MS</strong> on <span class="ticker" style="font-size:12px;">MSFT</span>: target $450 → actual $416</span>
+            <span class="badge badge-green" style="font-size:10px;">✓ 8%</span>
+          </div>
+          <div style="padding:4px 0; display:flex; justify-content:space-between;">
+            <span><strong>Bernstein</strong> on <span class="ticker" style="font-size:12px;">NVDA</span>: target $75 → actual $135</span>
+            <span class="badge badge-red" style="font-size:10px;">✗ 55%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- wireframe-container -->
+
+<script>
+function show(page) {
+  document.querySelectorAll('.wf').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.page-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('wf-' + page).classList.add('active');
+  event.target.classList.add('active');
+  const labels = {
+    predictions: '<strong>Predictions Tab</strong> — Ticker page (/ticker/NVDA), 7th tab with 12+ months of data',
+    leaderboard: '<strong>Analyst Leaderboard</strong> — Global page ranking analysts by accuracy (/analysts)',
+    coldstart: '<strong>Cold Start State</strong> — How the Predictions tab looks during first 12 months',
+    dashboard: '<strong>Dashboard Widget</strong> — Prediction Tracker card on the home Dashboard',
+  };
+  document.querySelector('.wireframe-label').innerHTML = labels[page] || '';
+}
+</script>
+</body>
+</html>

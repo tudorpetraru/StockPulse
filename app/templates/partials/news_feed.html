@@ -1,0 +1,43 @@
+<!-- News feed partial — swapped in via HTMX -->
+<div class="card">
+  {% if news_items %}
+  {% for item in news_items %}
+  <div class="news-item">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <div class="news-title" style="flex:1;">
+        <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a>
+      </div>
+      {% if item.ticker %}
+      <span class="badge badge-blue" style="margin-left:12px; flex-shrink:0;">
+        <a href="/ticker/{{ item.ticker }}" class="ticker-link" style="font-size:11px;">{{ item.ticker }}</a>
+      </span>
+      {% endif %}
+    </div>
+    <div class="news-meta">
+      <span class="source">{{ item.source }}</span>
+      · {{ item.published }}
+    </div>
+  </div>
+  {% endfor %}
+  <div style="text-align:center; margin-top:var(--space-lg);">
+    <button class="btn"
+            hx-get="/hx/news/feed?filter={{ active_filter }}&q={{ search_query }}&page={{ page + 1 }}"
+            hx-target="#news-feed"
+            hx-swap="innerHTML">
+      Load More News
+    </button>
+  </div>
+  {% else %}
+  <div style="padding:24px; text-align:center;" class="text-muted">
+    {% if active_filter == "portfolio" %}
+    No news for your portfolio tickers. Add positions to see relevant news.
+    {% elif active_filter == "watchlist" %}
+    No news for your watchlist tickers. Add tickers to your watchlist first.
+    {% elif active_filter == "custom" %}
+    No results found for "{{ search_query }}". Try a different search term.
+    {% else %}
+    No news available yet. News will appear once data providers are connected.
+    {% endif %}
+  </div>
+  {% endif %}
+</div>

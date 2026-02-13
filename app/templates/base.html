@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}StockPulse{% endblock %}</title>
+  <!-- PicoCSS base -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.classless.min.css">
+  <!-- Custom overrides -->
+  <link rel="stylesheet" href="/static/css/custom.css">
+  <!-- HTMX -->
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <!-- Plotly -->
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <!-- Global Navigation -->
+  <nav class="sp-nav">
+    <a href="/" class="logo">StockPulse</a>
+    <a href="/" class="nav-link {{ 'active' if active_page == 'dashboard' }}">Dashboard</a>
+    <a href="/screener" class="nav-link {{ 'active' if active_page == 'screener' }}">Screener</a>
+    <a href="/portfolio" class="nav-link {{ 'active' if active_page == 'portfolio' }}">Portfolio</a>
+    <a href="/watchlist" class="nav-link {{ 'active' if active_page == 'watchlist' }}">Watchlist</a>
+    <a href="/news" class="nav-link {{ 'active' if active_page == 'news' }}">News</a>
+    <input
+      type="text"
+      class="search-box"
+      placeholder="Search ticker... (Ctrl+K)"
+      readonly
+      onclick="openSearch()"
+      aria-label="Search tickers"
+    >
+  </nav>
+
+  <!-- Flash messages -->
+  {% if flash_messages %}
+  <div class="sp-body" style="padding-bottom:0;">
+    {% for msg in flash_messages %}
+    <div class="alert alert-{{ msg.level }}">{{ msg.text }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Page content -->
+  <main class="sp-body">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Global search modal (Ctrl+K) -->
+  <div id="search-modal" class="search-modal hidden" onclick="if(event.target===this) closeSearch()">
+    <div class="search-dialog">
+      <input
+        type="text"
+        placeholder="Type a ticker symbol (e.g., AAPL, NVDA)..."
+        onkeydown="handleSearchInput(event)"
+        aria-label="Ticker search"
+      >
+      <div class="search-results" id="search-results">
+        <div style="padding:16px 20px; color:var(--text-muted); font-size:13px;">
+          Press Enter to navigate to ticker page
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
