@@ -41,6 +41,7 @@ All notable changes to this project are documented in this file.
 - Fixed prediction-tab consensus target mismatch by aligning displayed consensus with ticker overview analyst average.
 - Fixed holders percent scaling by treating provider `pctHeld` as ratio input and converting to percentage display.
 - Fixed financials tab value rendering for both annual and quarterly views by mapping timestamp-based raw columns correctly (eliminating false all-`N/A` rows).
+- Stopped tracking SQLite runtime sidecar files (`data/*.db-wal`, `data/*.db-shm`) and added ignore rules to keep local portfolio data artifacts private.
 
 ### Tests
 
