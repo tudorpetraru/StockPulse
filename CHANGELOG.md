@@ -23,7 +23,8 @@ All notable changes to this project are documented in this file.
 - Updated portfolio/watchlist templates to use live quote fields, sortable headers, and last-refreshed metadata.
 - Added portfolio chart rendering in the portfolio screen using Plotly JSON endpoints.
 - Updated custom CSS with accessibility and UI-alignment class styles used by the revised templates.
-- Updated holders tables to show `% In` and `% of listed holdings` for each reported holder row.
+- Updated holders tables to show clearer filing semantics (`% In` of AAPL shares, filing-to-filing change, and AAPL position value).
+- Removed the derived "share of displayed holders" column to avoid misrepresenting fund-level portfolio weight.
 
 ### Fixed
 
@@ -39,6 +40,7 @@ All notable changes to this project are documented in this file.
 - Fixed Finviz analyst parsing for current columns (`Outer`, `Status`, `Price`) including price-target extraction from range strings.
 - Fixed prediction-tab consensus target mismatch by aligning displayed consensus with ticker overview analyst average.
 - Fixed holders percent scaling by treating provider `pctHeld` as ratio input and converting to percentage display.
+- Fixed financials tab value rendering for both annual and quarterly views by mapping timestamp-based raw columns correctly (eliminating false all-`N/A` rows).
 
 ### Tests
 
@@ -47,4 +49,5 @@ All notable changes to this project are documented in this file.
 - Added portfolio/watchlist refresh regressions validating refresh-path quote updates.
 - Added data-service regressions for title/link/source normalization, near-zero clipping, market-cap formatting, and NaN handling.
 - Added regressions for Finviz analyst-price parsing, prediction-summary consensus fallback, and holders percent normalization.
-- Full suite passing: `102 passed` (`pytest -q`).
+- Added regression coverage for timestamp-based financial column mapping (annual + quarterly) and holders filing change normalization.
+- Full suite passing: `103 passed` (`pytest -q`).

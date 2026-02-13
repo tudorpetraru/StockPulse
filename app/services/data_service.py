@@ -286,12 +286,13 @@ class DataService:
         income_rows = data.get("income_statement", []) if isinstance(data.get("income_statement"), list) else []
         balance_rows = data.get("balance_sheet", []) if isinstance(data.get("balance_sheet"), list) else []
         cashflow_rows = data.get("cash_flow", []) if isinstance(data.get("cash_flow"), list) else []
-        columns = _extract_columns([income_rows, balance_rows, cashflow_rows])
+        raw_columns = _extract_columns([income_rows, balance_rows, cashflow_rows])
+        columns = [_display_column_label(col) for col in raw_columns]
         return {
             "columns": columns,
-            "income": _normalize_financial_rows(income_rows, columns),
-            "balance": _normalize_financial_rows(balance_rows, columns),
-            "cashflow": _normalize_financial_rows(cashflow_rows, columns),
+            "income": _normalize_financial_rows(income_rows, raw_columns),
+            "balance": _normalize_financial_rows(balance_rows, raw_columns),
+            "cashflow": _normalize_financial_rows(cashflow_rows, raw_columns),
         }
 
     async def get_news(self, symbol: str, limit: int = 20) -> list[dict[str, Any]]:
@@ -351,7 +352,7 @@ class DataService:
     async def get_holders(self, symbol: str) -> dict[str, Any]:
         upper_symbol = symbol.upper()
         panel = await self._panel(
-            cache_key=self.cache.build_key("holders", upper_symbol, schema="v2"),
+            cache_key=self.cache.build_key("holders", upper_symbol, schema="v3"),
             cache_category="holders",
             primary=lambda: self.yfinance.get_holders(upper_symbol),
         )
@@ -691,14 +692,14 @@ def _clip_near_zero(value: float | None, threshold: float = 0.05) -> float | Non
     return 0.0 if abs(value) < threshold else value
 
 
-def _extract_columns(groups: list[list[dict[str, Any]]]) -> list[str]:
+def _extract_columns(groups: list[list[dict[str, Any]]]) -> list[Any]:
     for rows in groups:
         if not rows:
             continue
         first_row = rows[0]
         keys = [k for k in first_row.keys() if k not in {"index", "Breakdown", ""}]
         if keys:
-            return [_display_column_label(k) for k in keys[:4]]
+            return keys[:4]
     return []
 
 
@@ -715,13 +716,13 @@ def _display_column_label(value: Any) -> str:
     return text.split(" ")[0] if " " in text and ":" in text else text
 
 
-def _normalize_financial_rows(rows: list[dict[str, Any]], columns: list[str]) -> list[dict[str, Any]]:
+def _normalize_financial_rows(rows: list[dict[str, Any]], columns: list[Any]) -> list[dict[str, Any]]:
     normalized: list[dict[str, Any]] = []
     for row in rows[:40]:
         label = _as_str(_first(row, "index", "Breakdown")) or "N/A"
         values = []
         for col in columns:
-            val = row.get(col)
+            val = _lookup_financial_value(row, col)
             num = _to_float(val)
             if num is not None:
                 if abs(num) >= 1e9:
@@ -734,6 +735,24 @@ def _normalize_financial_rows(rows: list[dict[str, Any]], columns: list[str]) ->
                 values.append(_as_str(val) or "N/A")
         normalized.append({"label": label, "values": values})
     return normalized
+
+
+def _lookup_financial_value(row: dict[str, Any], col: Any) -> Any:
+    if col in row:
+        return row.get(col)
+
+    col_text = _as_str(col).strip()
+    if col_text and col_text in row:
+        return row.get(col_text)
+
+    col_label = _display_column_label(col)
+    if col_label in row:
+        return row.get(col_label)
+
+    for key, value in row.items():
+        if _display_column_label(key) == col_label:
+            return value
+    return None
 
 
 def _normalize_peer_rows(rows: list[dict[str, Any]], target_symbol: str | None = None) -> list[dict[str, Any]]:
@@ -782,19 +801,11 @@ def _normalize_holder_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "shares": shares,
                 "pct_in": _to_percent_value(_first(row, "pct_in", "% In", "% Held", "pctHeld")),
                 "pct_out": _to_percent_value(_first(row, "pct_out", "% Out", "Pct Out")),
+                "pct_change": _to_percent_value(_first(row, "pct_change", "% Change", "Pct Change", "pctChange")),
                 "value": value,
                 "date": _display_column_label(_first(row, "date", "Date", "Date Reported")),
             }
         )
-
-    total_shares = sum((row.get("shares") or 0.0) for row in normalized)
-    total_value = sum((row.get("value") or 0.0) for row in normalized)
-    use_shares = total_shares > 0
-    denom = total_shares if use_shares else total_value
-
-    for row in normalized:
-        base = row.get("shares") if use_shares else row.get("value")
-        row["pct_total"] = (float(base) / denom * 100.0) if base is not None and denom > 0 else None
 
     return normalized
 

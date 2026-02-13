@@ -12,9 +12,9 @@
             <tr>
                 <th>Holder</th>
                 <th>Shares</th>
-                <th>% In</th>
-                <th>% of Listed Holdings</th>
-                <th>Value</th>
+                <th>% In (of AAPL shares)</th>
+                <th>Change vs Prev Filing</th>
+                <th>AAPL Position Value</th>
                 <th>Date</th>
             </tr>
         </thead>
@@ -24,13 +24,22 @@
                 <td style="font-weight:500;">{{ h.name }}</td>
                 <td>{{ "{:,.0f}".format(h.shares) if h.shares is not none else "N/A" }}</td>
                 <td>{{ "%.2f"|format(h.pct_in) if h.pct_in is not none else "N/A" }}{% if h.pct_in is not none %}%{% endif %}</td>
-                <td>{{ "%.2f"|format(h.pct_total) if h.pct_total is not none else "N/A" }}{% if h.pct_total is not none %}%{% endif %}</td>
+                <td>
+                    {% if h.pct_change is not none %}
+                    {{ "{:+.2f}%".format(h.pct_change) }}
+                    {% else %}
+                    N/A
+                    {% endif %}
+                </td>
                 <td>{{ "${:,.0f}".format(h.value) if h.value is not none else "N/A" }}</td>
                 <td>{{ h.date }}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    <p style="color:var(--gray-500);font-size:12px;margin:10px 0 0;">
+        <strong>Note:</strong> % In is each holder's share of AAPL shares outstanding. Change is filing-to-filing position change (13F periods), not monthly trade flow. This table does not include each fund's full portfolio weight in AAPL.
+    </p>
     {% else %}
     <p style="color:var(--gray-500);font-size:13px;">No data available.</p>
     {% endif %}

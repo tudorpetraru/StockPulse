@@ -52,13 +52,27 @@ class TestTickerPartials:
     def test_hx_holders_200(self, client):
         self._assert_partial(client, "/hx/ticker/AAPL/holders")
 
-    def test_hx_holders_renders_pct_in_and_total_share_columns(self, client):
+    def test_hx_holders_renders_ownership_and_change_columns(self, client):
         async def _fake_holders(symbol: str):
             _ = symbol
             return {
                 "institutional": [
-                    {"name": "Fund A", "shares": 100.0, "pct_in": 25.0, "pct_total": 25.0, "value": 1000.0, "date": "2025-12-31"},
-                    {"name": "Fund B", "shares": 300.0, "pct_in": 75.0, "pct_total": 75.0, "value": 3000.0, "date": "2025-12-31"},
+                    {
+                        "name": "Fund A",
+                        "shares": 100.0,
+                        "pct_in": 25.0,
+                        "pct_change": 10.0,
+                        "value": 3000.0,
+                        "date": "2025-12-31",
+                    },
+                    {
+                        "name": "Fund B",
+                        "shares": 300.0,
+                        "pct_in": 75.0,
+                        "pct_change": -10.0,
+                        "value": 1000.0,
+                        "date": "2025-12-31",
+                    },
                 ],
                 "mutual_fund": [],
             }
@@ -66,8 +80,10 @@ class TestTickerPartials:
         client.app.state.data_service.get_holders = _fake_holders
         response = client.get("/hx/ticker/AAPL/holders")
         assert response.status_code == 200
-        assert "% In" in response.text
-        assert "% of Listed Holdings" in response.text
+        assert "% In (of AAPL shares)" in response.text
+        assert "Change vs Prev Filing" in response.text
+        assert "+10.00%" in response.text
+        assert "-10.00%" in response.text
         assert "25.00%" in response.text
         assert "75.00%" in response.text
 

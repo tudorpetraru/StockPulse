@@ -4,6 +4,8 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
+import pandas as pd
+
 from app.services.data_service import (
     DataService,
     _clip_near_zero,
@@ -64,6 +66,10 @@ class _DummyProvider:
     async def get_holders(self, symbol: str) -> dict[str, Any]:
         _ = symbol
         return self.holders
+
+    async def get_financials(self, symbol: str, period: str = "annual") -> dict[str, Any]:
+        _ = (symbol, period)
+        return {"income_statement": [], "balance_sheet": [], "cash_flow": []}
 
 
 def test_get_news_maps_title_link_and_dict_source():
@@ -172,13 +178,13 @@ def test_get_analyst_ratings_falls_back_to_live_consensus_targets():
     assert ratings["ratings"][0]["date"] == "2026-02-10"
 
 
-def test_get_holders_normalizes_pct_in_and_row_share_of_total():
+def test_get_holders_normalizes_pct_in_and_pct_change():
     cache = _DummyCache()
     yfinance = _DummyProvider(
         holders={
             "institutional": [
-                {"name": "Fund A", "shares": 100.0, "pct_in": 0.25, "value": 1000.0, "date": "2025-12-31"},
-                {"name": "Fund B", "shares": 300.0, "pct_in": 0.75, "value": 3000.0, "date": "2025-12-31"},
+                {"name": "Fund A", "shares": 100.0, "pct_in": 0.25, "pct_change": 0.10, "value": 3000.0, "date": "2025-12-31"},
+                {"name": "Fund B", "shares": 300.0, "pct_in": 0.75, "pct_change": -0.10, "value": 1000.0, "date": "2025-12-31"},
             ],
             "mutual_fund": [],
         }
@@ -192,5 +198,42 @@ def test_get_holders_normalizes_pct_in_and_row_share_of_total():
 
     assert first["pct_in"] == 25.0
     assert second["pct_in"] == 75.0
-    assert first["pct_total"] == 25.0
-    assert second["pct_total"] == 75.0
+    assert first["pct_change"] == 10.0
+    assert second["pct_change"] == -10.0
+
+
+def test_get_financials_maps_timestamp_columns_for_annual_and_quarterly():
+    cache = _DummyCache()
+
+    class _FinancialProvider(_DummyProvider):
+        async def get_financials(self, symbol: str, period: str = "annual") -> dict[str, Any]:
+            _ = symbol
+            if period == "quarterly":
+                c1 = pd.Timestamp("2025-12-31 00:00:00")
+                c2 = pd.Timestamp("2025-09-30 00:00:00")
+                return {
+                    "income_statement": [{"index": "Revenue", c1: 10_000_000_000, c2: 9_000_000_000}],
+                    "balance_sheet": [],
+                    "cash_flow": [],
+                }
+            c1 = pd.Timestamp("2025-09-30 00:00:00")
+            c2 = pd.Timestamp("2024-09-30 00:00:00")
+            return {
+                "income_statement": [{"index": "Revenue", c1: 100_000_000_000, c2: 95_000_000_000}],
+                "balance_sheet": [],
+                "cash_flow": [],
+            }
+
+    yfinance = _FinancialProvider()
+    finviz = _DummyProvider()
+    service = DataService(cache=cache, yfinance_provider=yfinance, finviz_provider=finviz)
+
+    annual = asyncio.run(service.get_financials("AAPL", period="annual"))
+    quarterly = asyncio.run(service.get_financials("AAPL", period="quarterly"))
+
+    assert annual["columns"] == ["2025-09-30", "2024-09-30"]
+    assert annual["income"][0]["label"] == "Revenue"
+    assert annual["income"][0]["values"] == ["100.00B", "95.00B"]
+
+    assert quarterly["columns"] == ["2025-12-31", "2025-09-30"]
+    assert quarterly["income"][0]["values"] == ["10.00B", "9.00B"]

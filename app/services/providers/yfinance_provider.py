@@ -296,6 +296,12 @@ def _holders_df_to_records(df: pd.DataFrame | None) -> list[dict[str, Any]]:
                     or row.get("pctHeld")
                     or row.get("pct_in")
                 ),
+                "pct_change": _to_float(
+                    row.get("% Change")
+                    or row.get("Pct Change")
+                    or row.get("pctChange")
+                    or row.get("pct_change")
+                ),
                 "value": _to_float(row.get("Value") or row.get("value")),
                 "date": _format_date(row.get("Date Reported") or row.get("Date") or row.get("date")),
             }
