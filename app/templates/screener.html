@@ -2,17 +2,17 @@
 {% block title %}Stock Screener — StockPulse{% endblock %}
 
 {% block content %}
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-    <h2 style="font-size:20px;color:var(--navy);">Stock Screener</h2>
-    <div style="display:flex;gap:8px;align-items:center;">
-        <select id="preset-select" class="wf-input" style="width:180px;" onchange="loadPreset(this.value)">
+<div class="screener-toolbar">
+    <h2 class="page-title" style="margin-bottom:0;">Stock Screener</h2>
+    <div class="screener-toolbar-actions">
+        <select id="preset-select" class="wf-input screener-preset-select" onchange="loadPreset(this.value)">
             <option value="">Load Preset...</option>
             {% for p in presets %}
             <option value="{{ p.id }}">{{ p.name }}</option>
             {% endfor %}
         </select>
-        <button class="btn btn-sm" onclick="savePreset()">Save Preset</button>
-        <button class="btn btn-sm" onclick="resetFilters()">Reset</button>
+        <button class="btn btn-primary toolbar-btn" onclick="savePreset()">Save Preset</button>
+        <button class="btn toolbar-btn" onclick="resetFilters()">Reset</button>
     </div>
 </div>
 
@@ -28,7 +28,7 @@
                 <label>P/E</label>
                 <div class="range-inputs">
                     <input type="number" name="pe_min" placeholder="Min" class="wf-input auto-submit" step="0.1">
-                    <span>–</span>
+                    <span class="range-separator">to</span>
                     <input type="number" name="pe_max" placeholder="Max" class="wf-input auto-submit" step="0.1">
                 </div>
             </div>
@@ -36,7 +36,7 @@
                 <label>Fwd P/E</label>
                 <div class="range-inputs">
                     <input type="number" name="fwd_pe_min" placeholder="Min" class="wf-input auto-submit" step="0.1">
-                    <span>–</span>
+                    <span class="range-separator">to</span>
                     <input type="number" name="fwd_pe_max" placeholder="Max" class="wf-input auto-submit" step="0.1">
                 </div>
             </div>
@@ -44,7 +44,7 @@
                 <label>P/B</label>
                 <div class="range-inputs">
                     <input type="number" name="pb_min" placeholder="Min" class="wf-input auto-submit" step="0.1">
-                    <span>–</span>
+                    <span class="range-separator">to</span>
                     <input type="number" name="pb_max" placeholder="Max" class="wf-input auto-submit" step="0.1">
                 </div>
             </div>
@@ -67,7 +67,7 @@
                 <label>EPS</label>
                 <div class="range-inputs">
                     <input type="number" name="eps_min" placeholder="Min" class="wf-input auto-submit" step="0.01">
-                    <span>–</span>
+                    <span class="range-separator">to</span>
                     <input type="number" name="eps_max" placeholder="Max" class="wf-input auto-submit" step="0.01">
                 </div>
             </div>
@@ -75,7 +75,7 @@
                 <label>ROE %</label>
                 <div class="range-inputs">
                     <input type="number" name="roe_min" placeholder="Min" class="wf-input auto-submit" step="0.1">
-                    <span>–</span>
+                    <span class="range-separator">to</span>
                     <input type="number" name="roe_max" placeholder="Max" class="wf-input auto-submit" step="0.1">
                 </div>
             </div>
@@ -86,7 +86,7 @@
                 <div class="range-inputs">
                     <input type="number" name="rsi_min" placeholder="Min" class="wf-input auto-submit" step="1" min="0"
                         max="100">
-                    <span>–</span>
+                    <span class="range-separator">to</span>
                     <input type="number" name="rsi_max" placeholder="Max" class="wf-input auto-submit" step="1" min="0"
                         max="100">
                 </div>
@@ -105,7 +105,7 @@
                 <label>Insider %</label>
                 <div class="range-inputs">
                     <input type="number" name="insider_min" placeholder="Min" class="wf-input auto-submit" step="0.1">
-                    <span>–</span>
+                    <span class="range-separator">to</span>
                     <input type="number" name="insider_max" placeholder="Max" class="wf-input auto-submit" step="0.1">
                 </div>
             </div>
