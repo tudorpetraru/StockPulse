@@ -61,6 +61,29 @@ class _TestDataService:
         return []
 
 
+class _TestPredictionService:
+    async def get_analyst_scorecard(self, symbol: str):
+        return []
+
+    async def get_consensus_history(self, symbol: str):
+        return []
+
+    async def get_top_analysts(self, *, sector: str | None = None, symbol: str | None = None):
+        return []
+
+    async def get_firm_history(self, symbol: str, firm: str):
+        return []
+
+    async def run_snapshot(self):
+        return {"status": "ok", "snapshots_created": 0}
+
+    async def get_prediction_summary(self, symbol: str):
+        return {"active": 0, "resolved": 0, "accuracy": None, "consensus_target": "N/A"}
+
+    async def get_prediction_history(self, symbol: str):
+        return []
+
+
 def _mount_static(app: FastAPI) -> None:
     static_dir = os.path.join(os.path.dirname(__file__), "..", "app", "static")
     if os.path.isdir(static_dir):
@@ -94,6 +117,7 @@ def client():
     test_app.include_router(news_router)
     test_app.dependency_overrides[get_db] = _override_get_db
     test_app.state.data_service = _TestDataService()
+    test_app.state.prediction_service = _TestPredictionService()
 
     with TestClient(test_app) as c:
         yield c

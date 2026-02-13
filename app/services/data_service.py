@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+from datetime import UTC, datetime
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -141,6 +142,238 @@ class DataService:
             primary=lambda: self.yfinance.get_current_price(upper_symbol),
             bypass_cache=bypass_cache,
         )
+
+    async def get_profile(self, symbol: str) -> dict[str, Any]:
+        upper_symbol = symbol.upper()
+        panel = await self._panel(
+            cache_key=self.cache.build_key("profile", upper_symbol),
+            cache_category="profile",
+            primary=lambda: self.yfinance.get_company_profile(upper_symbol),
+            fallback=lambda: self.finviz.get_company_profile(upper_symbol),
+        )
+        data = panel.data if isinstance(panel.data, dict) else {}
+        return {
+            "name": _as_str(_first(data, "name", "longName", "shortName")) or upper_symbol,
+            "symbol": upper_symbol,
+            "sector": _as_str(_first(data, "sector")) or "N/A",
+            "industry": _as_str(_first(data, "industry")) or "N/A",
+            "exchange": _as_str(_first(data, "exchange")) or "N/A",
+            "description": _as_str(_first(data, "description", "longBusinessSummary")),
+        }
+
+    async def get_price(self, symbol: str) -> dict[str, Any]:
+        upper_symbol = symbol.upper()
+        panel = await self._panel(
+            cache_key=self.cache.build_key("price", upper_symbol),
+            cache_category="price",
+            primary=lambda: self.yfinance.get_current_price(upper_symbol),
+            fallback=lambda: self.finviz.get_current_price(upper_symbol),
+        )
+        price = _to_float(panel.data) or 0.0
+
+        profile_cached = self.cache.get(self.cache.build_key("profile", upper_symbol))
+        day_change = _to_float(_first(profile_cached, "day_change")) if isinstance(profile_cached, dict) else None
+        if day_change is not None and abs(day_change) <= 1:
+            change_pct = day_change * 100.0
+        else:
+            change_pct = day_change or 0.0
+        change = price * (change_pct / 100.0)
+
+        return {
+            "price": float(price),
+            "change": float(change),
+            "change_pct": float(change_pct),
+            "updated": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
+        }
+
+    async def get_metrics(self, symbol: str) -> dict[str, Any]:
+        upper_symbol = symbol.upper()
+        panel = await self._panel(
+            cache_key=self.cache.build_key("metrics", upper_symbol),
+            cache_category="metrics",
+            primary=lambda: self.finviz.get_key_metrics(upper_symbol),
+            fallback=lambda: self.yfinance.get_key_metrics(upper_symbol),
+        )
+        data = panel.data if isinstance(panel.data, dict) else {}
+
+        market_cap = _first(data, "Market Cap", "market_cap")
+        return {
+            "pe": _fmt_metric(_first(data, "P/E", "pe")),
+            "fwd_pe": _fmt_metric(_first(data, "Forward P/E", "forward_pe")),
+            "peg": _fmt_metric(_first(data, "PEG", "peg")),
+            "mkt_cap": _fmt_market_cap(market_cap),
+            "ev_ebitda": _fmt_metric(_first(data, "EV/EBITDA", "ev_ebitda")),
+            "beta": _fmt_metric(_first(data, "Beta", "beta")),
+            "ps": _fmt_metric(_first(data, "P/S", "ps")),
+            "pb": _fmt_metric(_first(data, "P/B", "pb")),
+            "roe": _fmt_metric(_first(data, "ROE", "roe"), percent=True),
+            "profit_margin": _fmt_metric(_first(data, "Profit Margin", "profit_margin"), percent=True),
+            "debt_equity": _fmt_metric(_first(data, "Debt/Eq", "debt_equity")),
+            "insider_own": _fmt_metric(_first(data, "Insider Own"), percent=True),
+        }
+
+    async def get_analyst_ratings(self, symbol: str) -> dict[str, Any]:
+        upper_symbol = symbol.upper()
+        panel = await self._panel(
+            cache_key=self.cache.build_key("analyst", upper_symbol),
+            cache_category="analyst",
+            primary=lambda: self.finviz.get_analyst_ratings(upper_symbol),
+            fallback=lambda: self.yfinance.get_analyst_ratings(upper_symbol),
+        )
+        rows = panel.data if isinstance(panel.data, list) else []
+        normalized: list[dict[str, Any]] = []
+        targets: list[float] = []
+        rating_counts: dict[str, int] = {}
+
+        for row in rows[:50]:
+            if not isinstance(row, dict):
+                continue
+            target = _to_float(_first(row, "price_target", "Price Target", "target"))
+            if target is not None:
+                targets.append(target)
+
+            rating = _as_str(_first(row, "rating", "Rating")).strip() or "N/A"
+            if rating != "N/A":
+                rating_counts[rating] = rating_counts.get(rating, 0) + 1
+
+            normalized.append(
+                {
+                    "date": _as_str(_first(row, "date", "Date")) or "N/A",
+                    "firm": _as_str(_first(row, "firm", "Firm", "Analyst")) or "Unknown",
+                    "action": _as_str(_first(row, "action", "Action")) or "N/A",
+                    "rating": rating,
+                    "target": f"{target:.2f}" if target is not None else "N/A",
+                }
+            )
+
+        consensus = max(rating_counts, key=rating_counts.get) if rating_counts else "N/A"
+        return {
+            "consensus": consensus,
+            "count": len(normalized),
+            "low": f"{min(targets):.2f}" if targets else "N/A",
+            "avg": f"{(sum(targets) / len(targets)):.2f}" if targets else "N/A",
+            "high": f"{max(targets):.2f}" if targets else "N/A",
+            "ratings": normalized,
+        }
+
+    async def get_financials(self, symbol: str, period: str = "annual") -> dict[str, Any]:
+        upper_symbol = symbol.upper()
+        period_value = "quarterly" if period == "quarterly" else "annual"
+        panel = await self._panel(
+            cache_key=self.cache.build_key("financials", upper_symbol, period=period_value),
+            cache_category="financials",
+            primary=lambda: self.yfinance.get_financials(upper_symbol, period_value),
+        )
+        data = panel.data if isinstance(panel.data, dict) else {}
+        income_rows = data.get("income_statement", []) if isinstance(data.get("income_statement"), list) else []
+        balance_rows = data.get("balance_sheet", []) if isinstance(data.get("balance_sheet"), list) else []
+        cashflow_rows = data.get("cash_flow", []) if isinstance(data.get("cash_flow"), list) else []
+        columns = _extract_columns([income_rows, balance_rows, cashflow_rows])
+        return {
+            "columns": columns,
+            "income": _normalize_financial_rows(income_rows, columns),
+            "balance": _normalize_financial_rows(balance_rows, columns),
+            "cashflow": _normalize_financial_rows(cashflow_rows, columns),
+        }
+
+    async def get_news(self, symbol: str, limit: int = 20) -> list[dict[str, Any]]:
+        upper_symbol = symbol.upper()
+        panel = await self._panel(
+            cache_key=self.cache.build_key("news", upper_symbol, limit=limit),
+            cache_category="news",
+            primary=lambda: self.finviz.get_news(upper_symbol, limit=limit),
+            fallback=lambda: self.yfinance.get_news(upper_symbol, limit=limit),
+        )
+        rows = panel.data if isinstance(panel.data, list) else []
+        news: list[dict[str, Any]] = []
+        for row in rows[:limit]:
+            if not isinstance(row, dict):
+                continue
+            published = _as_str(_first(row, "published", "Date", "date", "datetime"))
+            parsed = _parse_datetime(published)
+            news.append(
+                {
+                    "title": _as_str(_first(row, "title", "News", "headline")) or "Untitled",
+                    "link": _as_str(_first(row, "url", "Link", "link")) or "#",
+                    "source": _as_str(_first(row, "source", "Source")) or "Unknown",
+                    "date": parsed.strftime("%Y-%m-%d") if parsed else (published or "N/A"),
+                    "time_ago": _time_ago(parsed) if parsed else "recent",
+                    "ticker": upper_symbol,
+                }
+            )
+        return news
+
+    async def get_insider_trades(self, symbol: str) -> list[dict[str, Any]]:
+        upper_symbol = symbol.upper()
+        panel = await self._panel(
+            cache_key=self.cache.build_key("insiders", upper_symbol),
+            cache_category="insiders",
+            primary=lambda: self.finviz.get_insider_transactions(upper_symbol),
+            fallback=lambda: self.yfinance.get_insider_transactions(upper_symbol),
+        )
+        rows = panel.data if isinstance(panel.data, list) else []
+        result: list[dict[str, Any]] = []
+        for row in rows[:50]:
+            if not isinstance(row, dict):
+                continue
+            shares = _to_float(_first(row, "Shares", "Shares Traded", "shares", "Qty"))
+            value = _to_float(_first(row, "Value", "value", "Transaction Value"))
+            result.append(
+                {
+                    "date": _as_str(_first(row, "Date", "date")) or "N/A",
+                    "name": _as_str(_first(row, "Insider", "Name", "name")) or "N/A",
+                    "title": _as_str(_first(row, "Title", "title")) or "N/A",
+                    "type": _as_str(_first(row, "Transaction", "Type", "action", "type")) or "N/A",
+                    "shares": shares,
+                    "value": value,
+                }
+            )
+        return result
+
+    async def get_holders(self, symbol: str) -> dict[str, Any]:
+        upper_symbol = symbol.upper()
+        key = self.cache.build_key("holders", upper_symbol)
+        cached = self.cache.get(key)
+        if isinstance(cached, dict):
+            return cached
+        payload = {"institutional": [], "mutual_fund": []}
+        self.cache.set(key, payload, ttl_for("holders"))
+        return payload
+
+    async def get_earnings(self, symbol: str) -> dict[str, Any]:
+        _ = symbol
+        return {"history": [], "next_date": "N/A"}
+
+    async def get_price_history(self, symbol: str, period: str = "1y") -> list[dict[str, Any]]:
+        upper_symbol = symbol.upper()
+        panel = await self._panel(
+            cache_key=self.cache.build_key("price", upper_symbol, period=period),
+            cache_category="price",
+            primary=lambda: self.yfinance.get_price_history(upper_symbol, period=period),
+        )
+        rows = panel.data if isinstance(panel.data, list) else []
+        history: list[dict[str, Any]] = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            close = _to_float(_first(row, "close", "Close"))
+            if close is None:
+                continue
+            history.append(
+                {
+                    "date": _normalize_date(_first(row, "date", "Date", "Datetime")),
+                    "open": _to_float(_first(row, "open", "Open")) or close,
+                    "high": _to_float(_first(row, "high", "High")) or close,
+                    "low": _to_float(_first(row, "low", "Low")) or close,
+                    "close": close,
+                    "volume": _to_float(_first(row, "volume", "Volume")) or 0.0,
+                }
+            )
+        return history
+
+    async def get_peers(self, symbol: str) -> list[dict[str, Any]]:
+        _ = symbol
+        return []
 
     async def screen_stocks(self, filters: dict[str, Any], limit: int = 300) -> list[dict[str, Any]]:
         """Run a screener query via finviz overview with best-effort filter mapping."""
@@ -315,3 +548,122 @@ def _to_mkt_cap_num(value: Any) -> float | None:
             return None
         return base * multipliers[suffix]
     return _to_float(text)
+
+
+def _first(data: dict[str, Any] | None, *keys: str) -> Any:
+    if not isinstance(data, dict):
+        return None
+    for key in keys:
+        if key in data and data.get(key) not in (None, ""):
+            return data.get(key)
+    return None
+
+
+def _fmt_metric(value: Any, percent: bool = False) -> str:
+    number = _to_float(value)
+    if number is None:
+        text = _as_str(value).strip()
+        return text if text else "N/A"
+    if percent:
+        pct = number * 100.0 if abs(number) <= 1 else number
+        return f"{pct:.1f}%"
+    if abs(number) >= 100:
+        return f"{number:,.0f}"
+    return f"{number:.2f}".rstrip("0").rstrip(".")
+
+
+def _fmt_market_cap(value: Any) -> str:
+    text = _as_str(value).strip()
+    if text and any(ch in text.upper() for ch in ("B", "M", "T")):
+        return text
+    number = _to_float(value)
+    if number is None:
+        return "N/A"
+    if number >= 1e12:
+        return f"{number / 1e12:.2f}T"
+    if number >= 1e9:
+        return f"{number / 1e9:.2f}B"
+    if number >= 1e6:
+        return f"{number / 1e6:.2f}M"
+    return f"{number:,.0f}"
+
+
+def _extract_columns(groups: list[list[dict[str, Any]]]) -> list[str]:
+    for rows in groups:
+        if not rows:
+            continue
+        first_row = rows[0]
+        keys = [k for k in first_row.keys() if k not in {"index", "Breakdown", ""}]
+        if keys:
+            return keys[:4]
+    return []
+
+
+def _normalize_financial_rows(rows: list[dict[str, Any]], columns: list[str]) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    for row in rows[:40]:
+        label = _as_str(_first(row, "index", "Breakdown")) or "N/A"
+        values = []
+        for col in columns:
+            val = row.get(col)
+            num = _to_float(val)
+            if num is not None:
+                if abs(num) >= 1e9:
+                    values.append(f"{num / 1e9:.2f}B")
+                elif abs(num) >= 1e6:
+                    values.append(f"{num / 1e6:.2f}M")
+                else:
+                    values.append(f"{num:,.0f}")
+            else:
+                values.append(_as_str(val) or "N/A")
+        normalized.append({"label": label, "values": values})
+    return normalized
+
+
+def _parse_datetime(value: str) -> datetime | None:
+    if not value:
+        return None
+    text = value.strip()
+    if not text:
+        return None
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00")).astimezone(UTC)
+    except ValueError:
+        pass
+    for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%b-%d-%y %I:%M%p"):
+        try:
+            parsed = datetime.strptime(text, fmt)
+            return parsed.replace(tzinfo=UTC)
+        except ValueError:
+            continue
+    return None
+
+
+def _time_ago(ts: datetime | None) -> str:
+    if ts is None:
+        return "recent"
+    delta = datetime.now(UTC) - ts
+    if delta.total_seconds() < 3600:
+        minutes = max(1, int(delta.total_seconds() // 60))
+        return f"{minutes}m ago"
+    if delta.total_seconds() < 86400:
+        hours = int(delta.total_seconds() // 3600)
+        return f"{hours}h ago"
+    days = int(delta.total_seconds() // 86400)
+    return f"{days}d ago"
+
+
+def _normalize_date(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    text = _as_str(value).strip()
+    if not text:
+        return ""
+    parsed = _parse_datetime(text)
+    if parsed is not None:
+        return parsed.date().isoformat()
+    if " " in text:
+        return text.split(" ")[0]
+    return text

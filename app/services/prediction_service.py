@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.database import SessionLocal
 from app.models.db_models import AnalystScore, AnalystSnapshot, ConsensusSnapshot
 from app.repositories.prediction_repository import PredictionRepository
 from app.services.providers.finviz_provider import FinvizProvider
@@ -263,6 +266,267 @@ class PredictionSnapshotService:
         )
 
 
+class PredictionService:
+    """Query facade for prediction APIs/UI, plus manual snapshot trigger."""
+
+    def __init__(
+        self,
+        session_factory: Callable[[], Session] = SessionLocal,
+        score_cfg: ScoreConfig | None = None,
+        snapshot_service: PredictionSnapshotService | None = None,
+    ) -> None:
+        self._session_factory = session_factory
+        self._score_cfg = score_cfg or ScoreConfig()
+        self._snapshot_service = snapshot_service
+
+    async def get_analyst_scorecard(self, symbol: str) -> list[dict[str, object]]:
+        upper_symbol = symbol.upper()
+        with self._session_factory() as db:
+            rows = (
+                db.query(AnalystSnapshot)
+                .filter(func.upper(AnalystSnapshot.ticker) == upper_symbol)
+                .order_by(AnalystSnapshot.snapshot_date.desc())
+                .all()
+            )
+
+        if not rows:
+            return []
+
+        by_firm: dict[str, list[AnalystSnapshot]] = {}
+        for row in rows:
+            by_firm.setdefault(row.firm, []).append(row)
+
+        result: list[dict[str, object]] = []
+        for firm, records in by_firm.items():
+            latest = records[0]
+            resolved = [r for r in records if r.prediction_error is not None and not r.is_unresolvable]
+            total = len(records)
+            insufficient = len(resolved) < self._score_cfg.min_predictions
+
+            success_rate = 0.0
+            direction_rate = 0.0
+            avg_error = 0.0
+            composite = 0.0
+            if not insufficient:
+                errors = [abs(r.prediction_error or 0.0) for r in resolved]
+                success_rate = (sum(1 for e in errors if e < self._score_cfg.success_threshold) / len(resolved)) * 100
+                direction_rate = (
+                    sum(1 for r in resolved if r.is_directionally_correct is True) / len(resolved)
+                ) * 100
+                avg_error = (sum(errors) / len(resolved)) * 100
+                composite = (
+                    PredictionSnapshotService.composite_score(
+                        success_rate=success_rate / 100,
+                        directional_accuracy=direction_rate / 100,
+                        avg_absolute_error=avg_error / 100,
+                    )
+                    * 100
+                )
+
+            result.append(
+                {
+                    "firm": firm,
+                    "total_predictions": total,
+                    "insufficient": insufficient,
+                    "success_rate": success_rate,
+                    "direction_rate": direction_rate,
+                    "avg_error": avg_error,
+                    "composite": composite,
+                    "latest_rating": latest.rating or "N/A",
+                    "latest_target": f"{latest.price_target:.2f}" if latest.price_target is not None else "N/A",
+                }
+            )
+
+        return sorted(
+            result,
+            key=lambda row: (bool(row.get("insufficient")), -float(row.get("composite") or 0.0)),
+        )
+
+    async def get_consensus_history(self, symbol: str) -> list[dict[str, object]]:
+        upper_symbol = symbol.upper()
+        with self._session_factory() as db:
+            rows = (
+                db.query(ConsensusSnapshot)
+                .filter(func.upper(ConsensusSnapshot.ticker) == upper_symbol)
+                .order_by(ConsensusSnapshot.snapshot_date.asc())
+                .all()
+            )
+        return [
+            {
+                "date": row.snapshot_date.isoformat(),
+                "avg_target": row.target_avg,
+                "low_target": row.target_low,
+                "high_target": row.target_high,
+                "resolved": row.actual_price_at_target is not None,
+                "accurate": row.consensus_was_correct,
+            }
+            for row in rows
+        ]
+
+    async def get_top_analysts(
+        self,
+        *,
+        sector: str | None = None,
+        symbol: str | None = None,
+    ) -> list[dict[str, object]]:
+        _ = sector  # Sector scoping is not yet available in the prediction schema.
+        with self._session_factory() as db:
+            if symbol:
+                scores = (
+                    db.query(AnalystScore)
+                    .filter(func.upper(AnalystScore.ticker) == symbol.upper(), AnalystScore.composite_score.is_not(None))
+                    .order_by(AnalystScore.composite_score.desc())
+                    .all()
+                )
+            else:
+                scores = (
+                    db.query(AnalystScore)
+                    .filter(AnalystScore.ticker.is_(None), AnalystScore.composite_score.is_not(None))
+                    .order_by(AnalystScore.composite_score.desc())
+                    .all()
+                )
+            ticker_rows = db.query(AnalystScore).filter(
+                AnalystScore.ticker.is_not(None), AnalystScore.composite_score.is_not(None)
+            ).all()
+
+        tickers_per_firm: dict[str, set[str]] = {}
+        for row in ticker_rows:
+            if row.ticker:
+                tickers_per_firm.setdefault(row.firm, set()).add(row.ticker)
+
+        leaderboard: list[dict[str, object]] = []
+        for score in scores:
+            if (
+                score.success_rate is None
+                or score.directional_accuracy is None
+                or score.avg_absolute_error is None
+                or score.composite_score is None
+            ):
+                continue
+            leaderboard.append(
+                {
+                    "firm": score.firm,
+                    "total_predictions": score.total_predictions,
+                    "tickers_covered": len(tickers_per_firm.get(score.firm, set())) if score.ticker is None else 1,
+                    "success_rate": score.success_rate * 100,
+                    "direction_rate": score.directional_accuracy * 100,
+                    "avg_error": score.avg_absolute_error * 100,
+                    "composite": score.composite_score * 100,
+                    "best_call": (
+                        {"symbol": score.best_call_ticker, "detail": "best call"}
+                        if score.best_call_ticker
+                        else None
+                    ),
+                    "worst_call": (
+                        {"symbol": score.worst_call_ticker, "detail": "worst call"}
+                        if score.worst_call_ticker
+                        else None
+                    ),
+                }
+            )
+        return leaderboard
+
+    async def get_firm_history(self, symbol: str, firm: str) -> list[dict[str, object]]:
+        upper_symbol = symbol.upper()
+        with self._session_factory() as db:
+            rows = (
+                db.query(AnalystSnapshot)
+                .filter(
+                    func.upper(AnalystSnapshot.ticker) == upper_symbol,
+                    func.lower(AnalystSnapshot.firm) == firm.lower(),
+                )
+                .order_by(AnalystSnapshot.snapshot_date.desc())
+                .all()
+            )
+        return [
+            {
+                "date": row.snapshot_date.isoformat(),
+                "firm": row.firm,
+                "rating": row.rating,
+                "target": row.price_target,
+                "implied_return": row.implied_return,
+                "resolved": row.actual_price_at_target is not None,
+            }
+            for row in rows
+        ]
+
+    async def run_snapshot(self) -> dict[str, object]:
+        if self._snapshot_service is None:
+            return {"status": "error", "message": "Snapshot service unavailable"}
+        db = self._session_factory()
+        try:
+            result = await self._snapshot_service.run_daily_snapshot(db)
+            return {"status": "ok", "snapshots_created": result.get("ok", 0), **result}
+        finally:
+            db.close()
+
+    async def get_prediction_summary(self, symbol: str) -> dict[str, object]:
+        upper_symbol = symbol.upper()
+        today = date.today()
+        with self._session_factory() as db:
+            rows = db.query(AnalystSnapshot).filter(func.upper(AnalystSnapshot.ticker) == upper_symbol).all()
+            consensus_rows = (
+                db.query(ConsensusSnapshot)
+                .filter(func.upper(ConsensusSnapshot.ticker) == upper_symbol)
+                .order_by(ConsensusSnapshot.snapshot_date.desc())
+                .all()
+            )
+
+        resolved = sum(1 for row in rows if row.actual_price_at_target is not None and not row.is_unresolvable)
+        active = sum(1 for row in rows if row.actual_price_at_target is None and not row.is_unresolvable and row.target_date >= today)
+
+        resolved_consensus = [row for row in consensus_rows if row.consensus_was_correct is not None]
+        accuracy = None
+        if resolved_consensus:
+            accuracy = (
+                sum(1 for row in resolved_consensus if row.consensus_was_correct is True) / len(resolved_consensus)
+            ) * 100
+
+        latest_target = next((row.target_avg for row in consensus_rows if row.target_avg is not None), None)
+        return {
+            "active": active,
+            "resolved": resolved,
+            "accuracy": accuracy,
+            "consensus_target": f"${latest_target:.2f}" if latest_target is not None else "N/A",
+        }
+
+    async def get_prediction_history(self, symbol: str) -> list[dict[str, object]]:
+        upper_symbol = symbol.upper()
+        today = date.today()
+        with self._session_factory() as db:
+            rows = (
+                db.query(AnalystSnapshot)
+                .filter(func.upper(AnalystSnapshot.ticker) == upper_symbol)
+                .order_by(AnalystSnapshot.snapshot_date.desc())
+                .limit(50)
+                .all()
+            )
+
+        history: list[dict[str, object]] = []
+        for row in rows:
+            resolved = row.actual_price_at_target is not None
+            error = abs(row.prediction_error) if row.prediction_error is not None else None
+            history.append(
+                {
+                    "date": row.snapshot_date.strftime("%b %d"),
+                    "year": row.snapshot_date.year,
+                    "firm": row.firm,
+                    "rating": row.rating,
+                    "action": row.action or "Updated",
+                    "target": f"{row.price_target:.2f}" if row.price_target is not None else "N/A",
+                    "implied_return": _fmt_pct(row.implied_return),
+                    "resolved": resolved,
+                    "resolve_date": row.target_date.isoformat() if row.target_date else "N/A",
+                    "actual_price": f"{row.actual_price_at_target:.2f}" if row.actual_price_at_target is not None else "N/A",
+                    "actual_return": _fmt_pct(row.actual_return),
+                    "accurate": bool(error is not None and error < self._score_cfg.success_threshold),
+                    "error_pct": _fmt_pct(error),
+                    "days_left": max((row.target_date - today).days, 0) if row.target_date else 0,
+                }
+            )
+        return history
+
+
 async def refresh_tracked_prices(
     db: Session,
     yfinance_provider: YFinanceProvider,
@@ -300,3 +564,9 @@ def _to_int(value: object) -> int | None:
         return int(value)
     except (ValueError, TypeError):
         return None
+
+
+def _fmt_pct(value: float | None) -> str:
+    if value is None:
+        return "N/A"
+    return f"{value * 100:.1f}%"

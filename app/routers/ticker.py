@@ -1,94 +1,20 @@
 """
 Ticker router — full page + HTMX partials + chart JSON APIs.
-
-Depends on Agent A's DataService and PredictionService.  Until that
-branch is merged we use lightweight stubs (see _stubs module below).
 """
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from app.dependencies import get_data_service, get_prediction_service
 from app.services.chart_service import build_price_chart, build_consensus_chart
+from app.services.data_service import DataService
+from app.services.prediction_service import PredictionService
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-# ── Agent-A interfaces (stubbed until rebase) ─────────────────────────────
-
-try:
-    from app.services.data_service import DataService  # type: ignore[import]
-    from app.services.prediction_service import PredictionService  # type: ignore[import]
-except ImportError:
-
-    class DataService:  # type: ignore[no-redef]
-        """Minimal stub – every method returns empty/sensible defaults."""
-
-        async def get_profile(self, symbol: str) -> dict[str, Any]:
-            return {
-                "name": symbol, "symbol": symbol, "sector": "N/A",
-                "industry": "N/A", "exchange": "N/A", "description": "",
-            }
-
-        async def get_price(self, symbol: str) -> dict[str, Any]:
-            return {"price": 0.0, "change": 0.0, "change_pct": 0.0, "updated": "N/A"}
-
-        async def get_metrics(self, symbol: str) -> dict[str, Any]:
-            keys = [
-                "pe", "fwd_pe", "peg", "mkt_cap", "ev_ebitda", "beta",
-                "ps", "pb", "roe", "profit_margin", "debt_equity", "insider_own",
-            ]
-            return {k: "N/A" for k in keys}
-
-        async def get_analyst_ratings(self, symbol: str) -> dict[str, Any]:
-            return {"consensus": "N/A", "count": 0, "low": "N/A",
-                     "avg": "N/A", "high": "N/A", "ratings": []}
-
-        async def get_financials(self, symbol: str, period: str = "annual") -> dict[str, Any]:
-            return {"income": [], "balance": [], "cashflow": []}
-
-        async def get_news(self, symbol: str, limit: int = 20) -> list[dict[str, Any]]:
-            return []
-
-        async def get_insider_trades(self, symbol: str) -> list[dict[str, Any]]:
-            return []
-
-        async def get_holders(self, symbol: str) -> dict[str, Any]:
-            return {"institutional": [], "mutual_fund": []}
-
-        async def get_earnings(self, symbol: str) -> dict[str, Any]:
-            return {"history": [], "next_date": "N/A"}
-
-        async def get_price_history(self, symbol: str, period: str = "1y") -> list[dict[str, Any]]:
-            return []
-
-        async def get_peers(self, symbol: str) -> list[dict[str, Any]]:
-            return []
-
-    class PredictionService:  # type: ignore[no-redef]
-        async def get_analyst_scorecard(self, symbol: str) -> list[dict[str, Any]]:
-            return []
-
-        async def get_consensus_history(self, symbol: str) -> list[dict[str, Any]]:
-            return []
-
-        async def get_prediction_summary(self, symbol: str) -> dict[str, Any]:
-            return {"active": 0, "resolved": 0, "accuracy": None, "consensus_target": "N/A"}
-
-        async def get_prediction_history(self, symbol: str) -> list[dict[str, Any]]:
-            return []
-
-
-def _get_data_service() -> DataService:
-    return DataService()
-
-
-def _get_prediction_service() -> PredictionService:
-    return PredictionService()
-
 
 # ── Jinja2 helper ─────────────────────────────────────────────────────────
 
@@ -104,7 +30,7 @@ def _templates():
 async def ticker_page(
     request: Request,
     symbol: str,
-    ds: DataService = Depends(_get_data_service),
+    ds: DataService = Depends(get_data_service),
 ):
     symbol = symbol.upper()
     templates = _templates()
@@ -151,7 +77,7 @@ async def hx_financials(
     request: Request,
     symbol: str,
     period: str = Query("annual"),
-    ds: DataService = Depends(_get_data_service),
+    ds: DataService = Depends(get_data_service),
 ):
     symbol = symbol.upper()
     templates = _templates()
@@ -171,7 +97,7 @@ async def hx_financials(
 @router.get("/hx/ticker/{symbol}/analysts", response_class=HTMLResponse)
 async def hx_analysts(
     request: Request, symbol: str,
-    ds: DataService = Depends(_get_data_service),
+    ds: DataService = Depends(get_data_service),
 ):
     symbol = symbol.upper()
     templates = _templates()
@@ -191,7 +117,7 @@ async def hx_analysts(
 @router.get("/hx/ticker/{symbol}/news", response_class=HTMLResponse)
 async def hx_news(
     request: Request, symbol: str,
-    ds: DataService = Depends(_get_data_service),
+    ds: DataService = Depends(get_data_service),
 ):
     symbol = symbol.upper()
     templates = _templates()
@@ -210,7 +136,7 @@ async def hx_news(
 @router.get("/hx/ticker/{symbol}/insiders", response_class=HTMLResponse)
 async def hx_insiders(
     request: Request, symbol: str,
-    ds: DataService = Depends(_get_data_service),
+    ds: DataService = Depends(get_data_service),
 ):
     symbol = symbol.upper()
     templates = _templates()
@@ -229,7 +155,7 @@ async def hx_insiders(
 @router.get("/hx/ticker/{symbol}/holders", response_class=HTMLResponse)
 async def hx_holders(
     request: Request, symbol: str,
-    ds: DataService = Depends(_get_data_service),
+    ds: DataService = Depends(get_data_service),
 ):
     symbol = symbol.upper()
     templates = _templates()
@@ -248,7 +174,7 @@ async def hx_holders(
 @router.get("/hx/ticker/{symbol}/earnings", response_class=HTMLResponse)
 async def hx_earnings(
     request: Request, symbol: str,
-    ds: DataService = Depends(_get_data_service),
+    ds: DataService = Depends(get_data_service),
 ):
     symbol = symbol.upper()
     templates = _templates()
@@ -267,7 +193,7 @@ async def hx_earnings(
 @router.get("/hx/ticker/{symbol}/predictions", response_class=HTMLResponse)
 async def hx_predictions(
     request: Request, symbol: str,
-    ps: PredictionService = Depends(_get_prediction_service),
+    ps: PredictionService = Depends(get_prediction_service),
 ):
     symbol = symbol.upper()
     templates = _templates()
@@ -297,7 +223,7 @@ async def hx_predictions(
 @router.get("/api/chart/{symbol}/price")
 async def chart_price(
     symbol: str, period: str = Query("1Y"),
-    ds: DataService = Depends(_get_data_service),
+    ds: DataService = Depends(get_data_service),
 ):
     symbol = symbol.upper()
     from app.services.chart_service import yfinance_period
@@ -313,8 +239,8 @@ async def chart_price(
 @router.get("/api/chart/{symbol}/consensus")
 async def chart_consensus(
     symbol: str, period: str = Query("2Y"),
-    ds: DataService = Depends(_get_data_service),
-    ps: PredictionService = Depends(_get_prediction_service),
+    ds: DataService = Depends(get_data_service),
+    ps: PredictionService = Depends(get_prediction_service),
 ):
     symbol = symbol.upper()
     try:
