@@ -158,6 +158,30 @@ class YFinanceProvider(BaseProvider):
 
         return await asyncio.to_thread(load)
 
+    async def get_price_delta(self, symbol: str) -> dict[str, float]:
+        ticker = await self._ticker(symbol)
+
+        def load() -> dict[str, float]:
+            info = ticker.fast_info or {}
+            current = info.get("lastPrice") or info.get("regularMarketPrice")
+            previous = info.get("regularMarketPreviousClose") or info.get("previousClose")
+
+            if current is None or previous in (None, 0):
+                fallback = ticker.info or {}
+                current = current or fallback.get("regularMarketPrice") or fallback.get("currentPrice")
+                previous = previous or fallback.get("regularMarketPreviousClose") or fallback.get("previousClose")
+
+            current_num = _to_float(current)
+            previous_num = _to_float(previous)
+            if current_num is None or previous_num is None or previous_num == 0:
+                return {"change": 0.0, "change_pct": 0.0}
+
+            change = current_num - previous_num
+            change_pct = (change / previous_num) * 100.0
+            return {"change": float(change), "change_pct": float(change_pct)}
+
+        return await asyncio.to_thread(load)
+
     async def get_price_on_date(self, symbol: str, target_date: date) -> float | None:
         ticker = await self._ticker(symbol)
 

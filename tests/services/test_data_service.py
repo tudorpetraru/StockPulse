@@ -71,6 +71,10 @@ class _DummyProvider:
         _ = (symbol, period)
         return {"income_statement": [], "balance_sheet": [], "cash_flow": []}
 
+    async def get_price_delta(self, symbol: str) -> dict[str, Any]:
+        _ = symbol
+        return {"change": 0.0, "change_pct": 0.0}
+
 
 def test_get_news_maps_title_link_and_dict_source():
     cache = _DummyCache()
@@ -200,6 +204,43 @@ def test_get_holders_normalizes_pct_in_and_pct_change():
     assert second["pct_in"] == 75.0
     assert first["pct_change"] == 10.0
     assert second["pct_change"] == -10.0
+
+
+def test_get_price_ignores_outlier_profile_day_change_pct():
+    cache = _DummyCache()
+    yfinance = _DummyProvider()
+    finviz = _DummyProvider()
+    service = DataService(cache=cache, yfinance_provider=yfinance, finviz_provider=finviz)
+
+    cache.set(cache.build_key("price", "ISLN.L"), 73.19, ttl=60)
+    cache.set(cache.build_key("profile", "ISLN.L", schema="v2"), {"day_change": -96.69795}, ttl=60)
+
+    quote = asyncio.run(service.get_price("ISLN.L"))
+    assert quote["price"] == 73.19
+    assert quote["change_pct"] == 0.0
+    assert quote["change"] == 0.0
+
+
+def test_get_price_prefers_yfinance_delta_panel():
+    cache = _DummyCache()
+
+    class _DeltaProvider(_DummyProvider):
+        async def get_current_price(self, symbol: str) -> float:
+            _ = symbol
+            return 100.0
+
+        async def get_price_delta(self, symbol: str) -> dict[str, Any]:
+            _ = symbol
+            return {"change": -1.5, "change_pct": -1.5}
+
+    yfinance = _DeltaProvider()
+    finviz = _DummyProvider()
+    service = DataService(cache=cache, yfinance_provider=yfinance, finviz_provider=finviz)
+
+    quote = asyncio.run(service.get_price("AAPL", bypass_cache=True))
+    assert quote["price"] == 100.0
+    assert quote["change"] == -1.5
+    assert quote["change_pct"] == -1.5
 
 
 def test_get_financials_maps_timestamp_columns_for_annual_and_quarterly():

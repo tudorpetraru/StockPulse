@@ -2,15 +2,35 @@
   <table class="sp-table">
     <thead>
       <tr>
-        {% set columns = [
+        {% set left_columns = [
           ("ticker", "Ticker"),
-          ("shares", "Shares"),
-          ("current", "Current"),
+          ("shares", "Shares")
+        ] %}
+        {% set right_columns = [
           ("value", "Value"),
           ("pl", "P&L $"),
           ("day_change", "Day Chg")
         ] %}
-        {% for key, label in columns %}
+        {% for key, label in left_columns %}
+        <th
+          hx-get="/hx/portfolio/table?portfolio_id={{ active_portfolio.id }}&sort_by={{ key }}&sort_dir={% if sort_by == key and sort_dir == 'asc' %}desc{% else %}asc{% endif %}"
+          hx-target="#positions-table"
+          hx-swap="innerHTML"
+          data-sort="{{ key }}">
+          {{ label }}
+          {% if sort_by == key %}{% if sort_dir == "asc" %}↑{% else %}↓{% endif %}{% endif %}
+        </th>
+        {% endfor %}
+        <th
+          hx-get="/hx/portfolio/table?portfolio_id={{ active_portfolio.id }}&sort_by=bought&sort_dir={% if sort_by == 'bought' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}"
+          hx-target="#positions-table"
+          hx-swap="innerHTML"
+          data-sort="bought">
+          Bought
+          {% if sort_by == "bought" %}{% if sort_dir == "asc" %}↑{% else %}↓{% endif %}{% endif %}
+        </th>
+        <th>Current</th>
+        {% for key, label in right_columns %}
         <th
           hx-get="/hx/portfolio/table?portfolio_id={{ active_portfolio.id }}&sort_by={{ key }}&sort_dir={% if sort_by == key and sort_dir == 'asc' %}desc{% else %}asc{% endif %}"
           hx-target="#positions-table"
@@ -21,7 +41,14 @@
         </th>
         {% endfor %}
         <th>Avg Cost</th>
-        <th>P&L %</th>
+        <th
+          hx-get="/hx/portfolio/table?portfolio_id={{ active_portfolio.id }}&sort_by=pl_pct&sort_dir={% if sort_by == 'pl_pct' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}"
+          hx-target="#positions-table"
+          hx-swap="innerHTML"
+          data-sort="pl_pct">
+          P&L %
+          {% if sort_by == "pl_pct" %}{% if sort_dir == "asc" %}↑{% else %}↓{% endif %}{% endif %}
+        </th>
         <th></th>
       </tr>
     </thead>
@@ -31,6 +58,7 @@
       <tr>
         <td><a href="/ticker/{{ pos.ticker }}" class="ticker-link">{{ pos.ticker }}</a></td>
         <td>{{ "{:.0f}".format(pos.shares) if pos.shares == pos.shares | int else "{:.2f}".format(pos.shares) }}</td>
+        <td class="text-muted">{% if pos.date_acquired %}{{ pos.date_acquired.strftime("%Y-%m-%d") }}{% else %}—{% endif %}</td>
         <td>${{ "{:.2f}".format(row.current) }}</td>
         <td>${{ "{:,.0f}".format(row.value) }}</td>
         <td class="{% if row.pl >= 0 %}positive{% else %}negative{% endif %}">
@@ -45,19 +73,21 @@
           {{ "+" if row.pl_pct >= 0 }}{{ "{:.1f}".format(row.pl_pct) }}%
         </td>
         <td>
-          <button class="btn btn-sm"
+          <button class="btn btn-sm watchlist-remove-btn portfolio-remove-btn"
                   hx-delete="/api/positions/{{ pos.id }}?sort_by={{ sort_by }}&sort_dir={{ sort_dir }}"
                   hx-target="#positions-table"
                   hx-swap="innerHTML"
-                  hx-confirm="Delete {{ pos.ticker }} position?">
-            Delete
+                  hx-confirm="Delete {{ pos.ticker }} position?"
+                  title="Delete {{ pos.ticker }} position"
+                  aria-label="Delete {{ pos.ticker }} position">
+            ✕
           </button>
         </td>
       </tr>
       {% endfor %}
       {% if quote_rows %}
       <tr class="total-row">
-        <td colspan="3" class="sp-table-total-cell">Total</td>
+        <td colspan="4" class="sp-table-total-cell">Total</td>
         <td>${{ "{:,.0f}".format(stats.total_value) }}</td>
         <td class="{% if stats.total_pl >= 0 %}positive{% else %}negative{% endif %}">
           {{ "+" if stats.total_pl >= 0 }}${{ "{:,.0f}".format(stats.total_pl) }}

@@ -256,28 +256,59 @@ def build_portfolio_sector_chart(points: list[dict[str, Any]]) -> dict[str, Any]
 
 
 def build_portfolio_positions_chart(points: list[dict[str, Any]]) -> dict[str, Any]:
-    """Build a bar chart for portfolio position-size allocation."""
+    """Build a readable holdings chart (top positions + optional Other bucket)."""
     if not points:
         return _empty_chart("No position data available")
 
-    labels = [str(point["label"]) for point in points]
-    values = [float(point["value"]) for point in points]
+    ranked = sorted(
+        (
+            {"label": str(point["label"]), "value": float(point["value"])}
+            for point in points
+            if float(point.get("value") or 0.0) > 0
+        ),
+        key=lambda point: point["value"],
+        reverse=True,
+    )
+    if not ranked:
+        return _empty_chart("No position data available")
+
+    top_n = 12
+    display_points = ranked
+    if len(ranked) > top_n:
+        head = ranked[: top_n - 1]
+        other_value = sum(point["value"] for point in ranked[top_n - 1 :])
+        if other_value > 0:
+            head.append({"label": "Other", "value": other_value})
+        display_points = head
+
+    labels = [point["label"] for point in display_points]
+    values = [point["value"] for point in display_points]
+    total = sum(values)
+    percentages = [(value / total * 100.0) if total > 0 else 0.0 for value in values]
+    colors = [_PORTFOLIO_COLORS[idx % len(_PORTFOLIO_COLORS)] for idx in range(len(labels))]
+    if labels and labels[-1] == "Other":
+        colors[-1] = "#B0BEC5"
+
     return {
         "data": [
             {
                 "type": "bar",
-                "x": labels,
-                "y": values,
-                "marker": {"color": _PORTFOLIO_COLORS[: len(labels)]},
-                "hovertemplate": "%{x}<br>$%{y:,.0f}<extra></extra>",
+                "orientation": "h",
+                "x": values,
+                "y": labels,
+                "text": [f"{pct:.1f}%" for pct in percentages],
+                "textposition": "auto",
+                "customdata": percentages,
+                "marker": {"color": colors},
+                "hovertemplate": "%{y}<br>$%{x:,.0f}<br>%{customdata:.1f}% of portfolio<extra></extra>",
             }
         ],
         "layout": {
             "plot_bgcolor": _BG,
             "paper_bgcolor": _BG,
-            "margin": {"l": 50, "r": 10, "t": 20, "b": 40},
-            "xaxis": {"title": "", "tickangle": -25},
-            "yaxis": {"title": "Value ($)", "gridcolor": _GRID},
+            "margin": {"l": 95, "r": 12, "t": 20, "b": 40},
+            "xaxis": {"title": "Value ($)", "gridcolor": _GRID, "tickprefix": "$", "separatethousands": True},
+            "yaxis": {"title": "", "autorange": "reversed", "automargin": True},
             "showlegend": False,
         },
     }

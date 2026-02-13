@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
-_SORTABLE_FIELDS = {"ticker", "shares", "current", "value", "pl", "day_change"}
+_SORTABLE_FIELDS = {"ticker", "shares", "bought", "value", "pl", "pl_pct", "day_change"}
 
 
 def _get_or_create_default_portfolio(db: Session) -> Portfolio:
@@ -46,6 +46,12 @@ def _sort_position_rows(rows: list[dict[str, Any]], sort_by: str, sort_dir: str)
     reverse = direction == "desc"
     if by == "ticker":
         return sorted(rows, key=lambda row: str(row["position"].ticker), reverse=reverse)
+    if by == "bought":
+        return sorted(
+            rows,
+            key=lambda row: row["position"].date_acquired or date.min,
+            reverse=reverse,
+        )
     return sorted(rows, key=lambda row: float(row.get(by) or 0.0), reverse=reverse)
 
 
@@ -252,11 +258,14 @@ async def portfolio_positions_chart(
         .all()
     )
     quote_rows = await _hydrate_positions(positions, ds, refresh=False)
-    points = [
-        {"label": row["position"].ticker, "value": float(row["value"])}
-        for row in quote_rows
-        if float(row["value"]) > 0
-    ]
+    by_ticker: dict[str, float] = {}
+    for row in quote_rows:
+        ticker = row["position"].ticker
+        value = float(row["value"])
+        if value <= 0:
+            continue
+        by_ticker[ticker] = by_ticker.get(ticker, 0.0) + value
+    points = [{"label": ticker, "value": value} for ticker, value in by_ticker.items()]
     return JSONResponse(content=build_portfolio_positions_chart(points))
 
 

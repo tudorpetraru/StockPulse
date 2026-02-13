@@ -80,7 +80,7 @@ class DataService:
     async def get_ticker_snapshot(self, symbol: str, bypass_cache: bool = False) -> PartialDataResult:
         upper_symbol = symbol.upper()
 
-        profile_key = self.cache.build_key("profile", upper_symbol)
+        profile_key = self.cache.build_key("profile", upper_symbol, schema="v2")
         metrics_key = self.cache.build_key("metrics", upper_symbol)
         analyst_key = self.cache.build_key("analyst", upper_symbol, schema="v2")
         insiders_key = self.cache.build_key("insiders", upper_symbol)
@@ -148,7 +148,7 @@ class DataService:
     async def get_profile(self, symbol: str) -> dict[str, Any]:
         upper_symbol = symbol.upper()
         panel = await self._panel(
-            cache_key=self.cache.build_key("profile", upper_symbol),
+            cache_key=self.cache.build_key("profile", upper_symbol, schema="v2"),
             cache_category="profile",
             primary=lambda: self.yfinance.get_company_profile(upper_symbol),
             fallback=lambda: self.finviz.get_company_profile(upper_symbol),
@@ -174,14 +174,37 @@ class DataService:
         )
         price = _to_float(panel.data) or 0.0
 
-        profile_cached = self.cache.get(self.cache.build_key("profile", upper_symbol))
-        day_change = _to_float(_first(profile_cached, "day_change")) if isinstance(profile_cached, dict) else None
-        if day_change is not None and abs(day_change) <= 1:
-            change_pct = day_change * 100.0
-        else:
-            change_pct = day_change or 0.0
+        change = None
+        change_pct = None
+
+        get_price_delta = getattr(self.yfinance, "get_price_delta", None)
+        if callable(get_price_delta):
+            delta_panel = await self._panel(
+                cache_key=self.cache.build_key("price", upper_symbol, panel="delta", schema="v1"),
+                cache_category="price",
+                primary=lambda: get_price_delta(upper_symbol),
+                bypass_cache=bypass_cache,
+            )
+            delta_data = delta_panel.data if isinstance(delta_panel.data, dict) else {}
+            change = _to_float(delta_data.get("change"))
+            change_pct = _to_float(delta_data.get("change_pct"))
+
+        if change_pct is None:
+            profile_cached = self.cache.get(self.cache.build_key("profile", upper_symbol, schema="v2"))
+            day_change = _to_float(_first(profile_cached, "day_change")) if isinstance(profile_cached, dict) else None
+            if day_change is not None and abs(day_change) <= 1:
+                change_pct = day_change * 100.0
+            else:
+                change_pct = day_change or 0.0
+
+        # Guard against upstream quote glitches that can surface absurd day moves
+        # (e.g., stale/currency-misaligned values like -96% on ETFs).
+        if abs(change_pct) > 60:
+            logger.warning("Ignoring outlier day change pct for %s: %s", upper_symbol, change_pct)
+            change_pct = 0.0
         change_pct = _clip_near_zero(change_pct)
-        change = price * (change_pct / 100.0)
+        if change is None:
+            change = price * (change_pct / 100.0)
 
         return {
             "price": float(price),
