@@ -637,5 +637,122 @@ body {
 
 .search-result-item:hover { background: var(--bg-hover); }
 
+/* ═══ Page headers ═══ */
+.page-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.page-refresh-meta {
+  font-size: 12px;
+}
+
+/* ═══ Portfolio + watchlist additions ═══ */
+.portfolio-chart {
+  min-height: 260px;
+}
+
+.sidebar-new-action {
+  width: 100%;
+}
+
+.sidebar-inline-form {
+  display: grid;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.sp-table-total-cell {
+  font-weight: 700;
+}
+
+.table-empty-state {
+  padding: var(--space-lg);
+  text-align: center;
+}
+
+.watchlist-new-inline {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.watchlist-new-button {
+  border-bottom-color: transparent;
+}
+
+.watchlist-new-form {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-left: var(--space-sm);
+}
+
+.watchlist-add-form {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.watchlist-notes {
+  max-width: 280px;
+  font-size: 12px;
+}
+
+.watchlist-remove-btn {
+  min-width: 28px;
+  padding-inline: 8px;
+}
+
+/* ═══ Ticker + financials additions ═══ */
+.financials-period-controls {
+  margin-bottom: var(--space-md);
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+.financial-row-label {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.empty-copy {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.ticker-price-chart {
+  height: 280px;
+}
+
+.compact-table {
+  font-size: 12px;
+}
+
+/* ═══ Accessibility ═══ */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 /* ═══ Utility: hide ═══ */
 .hidden { display: none !important; }

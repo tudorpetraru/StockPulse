@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // ── Ctrl/Cmd+K → Global search ──
   document.addEventListener('keydown', function (e) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
       toggleSearch();
     }
@@ -17,24 +17,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // ── Ticker-page tab shortcuts (1-7) ──
   document.addEventListener('keydown', function (e) {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+    if (isFormField(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+
+    var isTickerPage = window.location.pathname.startsWith('/ticker/');
     var tabKeys = { '1': 0, '2': 1, '3': 2, '4': 3, '5': 4, '6': 5, '7': 6 };
-    if (e.key in tabKeys) {
-      var tabs = document.querySelectorAll('.sp-tab[data-tab]');
+    if (isTickerPage && e.key in tabKeys) {
+      var tabs = document.querySelectorAll('.wf-tabs [data-tab]');
       if (tabs.length > 0 && tabKeys[e.key] < tabs.length) {
         tabs[tabKeys[e.key]].click();
       }
     }
+
     // R → Refresh (click refresh button if present)
-    if (e.key === 'r' || e.key === 'R') {
+    if (e.key.toLowerCase() === 'r') {
       var refreshBtn = document.querySelector('[data-action="refresh"]');
       if (refreshBtn) {
         e.preventDefault();
         refreshBtn.click();
       }
     }
+
     // W → Add to watchlist (click watchlist button if present)
-    if (e.key === 'w' || e.key === 'W') {
+    if (isTickerPage && e.key.toLowerCase() === 'w') {
       var watchBtn = document.querySelector('[data-action="add-watchlist"]');
       if (watchBtn) {
         e.preventDefault();
@@ -42,7 +46,23 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     }
   });
+
+  document.body.addEventListener('click', function (e) {
+    var tab = e.target.closest('[data-tab]');
+    if (!tab) return;
+    var tabGroup = tab.closest('.wf-tabs');
+    if (!tabGroup) return;
+    tabGroup.querySelectorAll('[data-tab]').forEach(function (item) {
+      item.classList.toggle('active', item === tab);
+    });
+  });
 });
+
+function isFormField(el) {
+  if (!el) return false;
+  var tag = (el.tagName || '').toUpperCase();
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || !!el.closest('[contenteditable="true"]');
+}
 
 // ── Search modal ──
 function toggleSearch() {

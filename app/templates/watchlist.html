@@ -3,15 +3,16 @@
 {% block title %}Watchlist — StockPulse{% endblock %}
 
 {% block content %}
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-lg);">
-  <h2 class="page-title" style="margin-bottom:0;">Watchlists</h2>
-  <div style="display:flex; gap:8px; align-items:center;">
-    <span style="font-size:12px;" class="text-muted">Last refreshed: N/A</span>
-    <button class="btn btn-sm" data-action="refresh">Refresh</button>
+<div class="page-header-row">
+  <h2 class="page-title">Watchlists</h2>
+  <div class="page-header-actions">
+    <span class="text-muted page-refresh-meta">Last refreshed: {{ last_refreshed }}</span>
+    <a class="btn btn-sm"
+       data-action="refresh"
+       href="/watchlist?watchlist_id={{ active_watchlist.id }}&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}&refresh=1">Refresh</a>
   </div>
 </div>
 
-<!-- Watchlist Tabs -->
 <div class="sp-tabs">
   {% for wl in watchlists %}
   <a href="/watchlist?watchlist_id={{ wl.id }}"
@@ -19,28 +20,30 @@
     {{ wl.name }} ({{ wl.items | length }})
   </a>
   {% endfor %}
-  <div x-data="{ open: false }" style="display:flex; align-items:center;">
-    <button class="sp-tab" style="color:var(--blue);" @click="open = !open">+ New List</button>
-    <form x-show="open" action="/api/watchlists" method="post" style="display:flex; gap:4px; padding:4px 8px;">
+  <div x-data="{ open: false }" class="watchlist-new-inline">
+    <button type="button" class="sp-tab watchlist-new-button" @click="open = !open">+ New List</button>
+    <form x-show="open" action="/api/watchlists" method="post" class="watchlist-new-form">
       <input type="hidden" name="csrf_token" value="">
-      <input class="sp-input" name="name" placeholder="List name" required style="width:120px; padding:4px 8px; font-size:12px;">
+      <label class="visually-hidden" for="watchlist-name-input">Watchlist Name</label>
+      <input id="watchlist-name-input" class="sp-input" name="name" placeholder="List name" required>
       <button type="submit" class="btn btn-primary btn-sm">Create</button>
     </form>
   </div>
 </div>
 
-<!-- Add Ticker -->
 <form hx-post="/api/watchlist-items"
       hx-target="#watchlist-table"
       hx-swap="innerHTML"
-      style="display:flex; gap:8px; margin-bottom:var(--space-lg);">
+      class="watchlist-add-form">
   <input type="hidden" name="csrf_token" value="">
   <input type="hidden" name="watchlist_id" value="{{ active_watchlist.id }}">
-  <input class="sp-input" name="ticker" placeholder="Add ticker (e.g., TSLA)" style="max-width:250px;" required>
+  <input type="hidden" name="sort_by" value="{{ sort_by }}">
+  <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+  <label class="visually-hidden" for="watchlist-ticker-input">Ticker</label>
+  <input id="watchlist-ticker-input" class="sp-input" name="ticker" placeholder="Add ticker (e.g., TSLA)" required>
   <button type="submit" class="btn btn-primary btn-sm">+ Add</button>
 </form>
 
-<!-- Watchlist Table -->
 <div id="watchlist-table">
   {% include "partials/watchlist_table.html" %}
 </div>

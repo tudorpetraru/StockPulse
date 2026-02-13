@@ -33,6 +33,53 @@ def test_news_feed_htmx(client):
     assert response.status_code == 200
 
 
+def test_news_title_and_source_normalization(client):
+    async def _fake_get_news(symbol: str, limit: int = 20):
+        _ = limit
+        return [
+            {
+                "Title": f"{symbol} Uppercase Title",
+                "Link": "https://example.com/upper",
+                "Source": {"displayName": "Mapped Source"},
+                "Date": "2026-02-13",
+            },
+            {
+                "title": f"{symbol} lowercase title",
+                "url": "https://example.com/lower",
+                "source": "Lower Source",
+                "date": "2026-02-13",
+            },
+        ]
+
+    client.app.state.data_service.get_news = _fake_get_news
+    response = client.get("/hx/news/feed?filter=all")
+    assert response.status_code == 200
+    assert b"Uppercase Title" in response.content
+    assert b"lowercase title" in response.content
+    assert b"Mapped Source" in response.content
+    assert b"Untitled" not in response.content
+
+
+def test_news_invalid_symbol_not_rendered_as_ticker(client):
+    async def _fake_get_news(symbol: str, limit: int = 20):
+        _ = (symbol, limit)
+        return [
+            {
+                "title": "Macro headline",
+                "url": "https://example.com/macro",
+                "source": "Macro Source",
+                "symbol": "US STOCK MARKET",
+                "date": "2026-02-13",
+            }
+        ]
+
+    client.app.state.data_service.get_news = _fake_get_news
+    response = client.get("/hx/news/feed?filter=all")
+    assert response.status_code == 200
+    assert b"Macro headline" in response.content
+    assert b"/ticker/US STOCK MARKET" not in response.content
+
+
 def test_news_empty_state_message(client):
     response = client.get("/hx/news/feed?filter=all")
     assert response.status_code == 200

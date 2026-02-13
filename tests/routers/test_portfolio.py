@@ -23,6 +23,25 @@ def test_portfolio_table_htmx(client, sample_portfolio):
     assert b"AAPL" in response.content
 
 
+def test_portfolio_table_refresh_uses_bypass_cache(client, sample_portfolio):
+    async def _fake_get_price(symbol: str, bypass_cache: bool = False):
+        _ = symbol
+        return {
+            "price": 150.0 if bypass_cache else 100.0,
+            "change": 1.5 if bypass_cache else 1.0,
+            "change_pct": 1.5 if bypass_cache else 1.0,
+            "updated": "now",
+        }
+
+    client.app.state.data_service.get_price = _fake_get_price
+    baseline = client.get(f"/hx/portfolio/table?portfolio_id={sample_portfolio.id}")
+    refreshed = client.get(f"/hx/portfolio/table?portfolio_id={sample_portfolio.id}&refresh=1")
+    assert baseline.status_code == 200
+    assert refreshed.status_code == 200
+    assert b"$100.00" in baseline.content
+    assert b"$150.00" in refreshed.content
+
+
 def test_add_position(client, sample_portfolio):
     response = client.post("/api/positions", data={
         "portfolio_id": sample_portfolio.id,

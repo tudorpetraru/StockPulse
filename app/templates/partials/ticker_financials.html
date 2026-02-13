@@ -3,12 +3,12 @@
 <div class="alert alert-error">❌ Financial data temporarily unavailable. <a hx-get="/hx/ticker/{{ symbol }}/financials"
         hx-target="#tab-content" hx-swap="innerHTML">Click to retry.</a></div>
 {% else %}
-<div x-data="{ view: '{{ period }}' }">
-    <div class="btn-group" style="margin-bottom:16px;">
-        <button class="btn btn-sm" :class="{ 'btn-primary': view === 'annual' }" @click="view = 'annual'"
+<div>
+    <div class="btn-group financials-period-controls">
+        <button class="btn btn-sm {% if period == 'annual' %}btn-primary{% endif %}"
             hx-get="/hx/ticker/{{ symbol }}/financials?period=annual" hx-target="#tab-content"
             hx-swap="innerHTML">Annual</button>
-        <button class="btn btn-sm" :class="{ 'btn-primary': view === 'quarterly' }" @click="view = 'quarterly'"
+        <button class="btn btn-sm {% if period == 'quarterly' %}btn-primary{% endif %}"
             hx-get="/hx/ticker/{{ symbol }}/financials?period=quarterly" hx-target="#tab-content"
             hx-swap="innerHTML">Quarterly</button>
     </div>
@@ -18,7 +18,7 @@
 <div class="card">
     <div class="card-title">{{ title }}</div>
     {% if rows %}
-    <div style="overflow-x:auto;">
+    <div class="table-scroll">
         <table class="wf-table">
             <thead>
                 <tr>
@@ -29,8 +29,8 @@
             <tbody>
                 {% for row in rows %}
                 <tr>
-                    <td style="font-weight:500;">{{ row.label }}</td>
-                    {% for val in row.values %}
+                    <td class="financial-row-label">{{ row.label }}</td>
+                    {% for val in row["values"] %}
                     <td>{{ val }}</td>
                     {% endfor %}
                 </tr>
@@ -39,7 +39,7 @@
         </table>
     </div>
     {% else %}
-    <p style="color:var(--gray-500);font-size:13px;">No data available.</p>
+    <p class="empty-copy">No data available.</p>
     {% endif %}
 </div>
 {% endmacro %}

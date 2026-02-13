@@ -139,7 +139,7 @@
         if (!presetId) return;
         const resp = await fetch('/api/screener/presets');
         const presets = await resp.json();
-        const preset = presets.find(p => p.id === presetId);
+        const preset = presets.find(p => String(p.id) === String(presetId));
         if (!preset) return;
         resetFilters();
         const form = document.getElementById('screener-form');
@@ -156,7 +156,7 @@
         const form = document.getElementById('screener-form');
         const fd = new FormData(form);
         const filters = {};
-        fd.forEach((v, k) => { if (v) filters[k] = v; });
+        fd.forEach((v, k) => { if (v && k !== 'csrf_token') filters[k] = v; });
         fetch('/api/screener/presets', {
             method: 'POST',
             headers: {

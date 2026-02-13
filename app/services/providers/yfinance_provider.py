@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 from datetime import date, timedelta
 from typing import Any
 
@@ -122,7 +123,7 @@ class YFinanceProvider(BaseProvider):
             items.append(
                 {
                     "title": content.get("title") or item.get("title"),
-                    "source": content.get("provider") or item.get("publisher"),
+                    "source": _source_name(content.get("provider") or item.get("publisher")),
                     "published": content.get("pubDate") or item.get("providerPublishTime"),
                     "url": content.get("canonicalUrl", {}).get("url") or item.get("link"),
                     "symbol": symbol.upper(),
@@ -300,12 +301,18 @@ def _to_float(value: Any) -> float | None:
     if value is None:
         return None
     if isinstance(value, (int, float)):
-        return float(value)
+        num = float(value)
+        if math.isnan(num) or math.isinf(num):
+            return None
+        return num
     text = str(value).replace("%", "").replace(",", "").replace("$", "").strip()
     if not text:
         return None
     try:
-        return float(text)
+        num = float(text)
+        if math.isnan(num) or math.isinf(num):
+            return None
+        return num
     except ValueError:
         return None
 
@@ -318,3 +325,11 @@ def _format_date(value: Any) -> str:
         return dt_value.strftime("%Y-%m-%d")
     text = str(value).strip()
     return text or "N/A"
+
+
+def _source_name(value: Any) -> str:
+    if isinstance(value, dict):
+        return str(value.get("displayName") or value.get("title") or value.get("name") or "Unknown")
+    if value is None:
+        return "Unknown"
+    return str(value)

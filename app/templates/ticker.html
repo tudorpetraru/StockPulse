@@ -16,11 +16,13 @@
       </div>
       <div class="company-actions">
         <button class="btn btn-sm btn-primary"
+                data-action="add-watchlist"
                 hx-post="/api/watchlist/add"
                 hx-vals='{"symbol":"{{ symbol }}"}'
                 hx-swap="none">+ Add to Watchlist</button>
         <a class="btn btn-sm" href="/portfolio">Add Position</a>
         <button class="btn btn-sm"
+                data-action="refresh"
                 hx-get="/ticker/{{ symbol }}"
                 hx-target="body"
                 hx-push-url="true">Refresh ↻</button>
@@ -54,46 +56,33 @@
 </div>
 
 <!-- ── Tab Bar ──────────────────────────────────────────────────────── -->
-<div class="ticker-tabs" x-data="{ tab: 'overview' }">
-  <div class="wf-tabs">
-    <div class="wf-tab" :class="{ active: tab === 'overview' }"
-         @click="tab = 'overview'">Overview</div>
-    <div class="wf-tab" :class="{ active: tab === 'financials' }"
-         @click="tab = 'financials'"
+<div class="ticker-tabs">
+  <div class="wf-tabs" role="tablist" aria-label="Ticker sections">
+    <a class="wf-tab sp-tab active" data-tab="overview" href="/ticker/{{ symbol }}">Overview</a>
+    <button type="button" class="wf-tab sp-tab" data-tab="financials"
          hx-get="/hx/ticker/{{ symbol }}/financials"
          hx-target="#tab-content"
-         hx-trigger="click once"
-         hx-swap="innerHTML">Financials</div>
-    <div class="wf-tab" :class="{ active: tab === 'news' }"
-         @click="tab = 'news'"
+         hx-swap="innerHTML">Financials</button>
+    <button type="button" class="wf-tab sp-tab" data-tab="news"
          hx-get="/hx/ticker/{{ symbol }}/news"
          hx-target="#tab-content"
-         hx-trigger="click once"
-         hx-swap="innerHTML">News</div>
-    <div class="wf-tab" :class="{ active: tab === 'insiders' }"
-         @click="tab = 'insiders'"
+         hx-swap="innerHTML">News</button>
+    <button type="button" class="wf-tab sp-tab" data-tab="insiders"
          hx-get="/hx/ticker/{{ symbol }}/insiders"
          hx-target="#tab-content"
-         hx-trigger="click once"
-         hx-swap="innerHTML">Insiders</div>
-    <div class="wf-tab" :class="{ active: tab === 'holders' }"
-         @click="tab = 'holders'"
+         hx-swap="innerHTML">Insiders</button>
+    <button type="button" class="wf-tab sp-tab" data-tab="holders"
          hx-get="/hx/ticker/{{ symbol }}/holders"
          hx-target="#tab-content"
-         hx-trigger="click once"
-         hx-swap="innerHTML">Holders</div>
-    <div class="wf-tab" :class="{ active: tab === 'earnings' }"
-         @click="tab = 'earnings'"
+         hx-swap="innerHTML">Holders</button>
+    <button type="button" class="wf-tab sp-tab" data-tab="earnings"
          hx-get="/hx/ticker/{{ symbol }}/earnings"
          hx-target="#tab-content"
-         hx-trigger="click once"
-         hx-swap="innerHTML">Earnings</div>
-    <div class="wf-tab" :class="{ active: tab === 'predictions' }"
-         @click="tab = 'predictions'"
+         hx-swap="innerHTML">Earnings</button>
+    <button type="button" class="wf-tab sp-tab" data-tab="predictions"
          hx-get="/hx/ticker/{{ symbol }}/predictions"
          hx-target="#tab-content"
-         hx-trigger="click once"
-         hx-swap="innerHTML">Predictions</div>
+         hx-swap="innerHTML">Predictions</button>
   </div>
 
   <!-- ── Tab Content ─────────────────────────────────────────────────── -->
@@ -103,13 +92,15 @@
       <!-- Price Chart -->
       <div class="card">
         <div class="card-title">Price History</div>
-        <div class="period-selector" x-data="{ period: '1Y' }">
+        <div class="period-selector" id="price-period-selector">
           {% for p in ['1M','3M','6M','1Y','5Y'] %}
-          <button class="period-btn" :class="{ active: period === '{{ p }}' }"
-                  @click="period = '{{ p }}'; loadPriceChart('{{ symbol }}', '{{ p }}')">{{ p }}</button>
+          <button type="button"
+                  class="period-btn {% if p == '1Y' %}active{% endif %}"
+                  data-price-period="{{ p }}"
+                  onclick="loadPriceChart('{{ symbol }}', '{{ p }}', this)">{{ p }}</button>
           {% endfor %}
         </div>
-        <div id="price-chart" style="height:280px;"></div>
+        <div id="price-chart" class="ticker-price-chart"></div>
       </div>
 
       <!-- Analyst Consensus -->
@@ -122,21 +113,21 @@
           <div class="consensus-meta">Based on {{ analysts.count }} analysts</div>
         </div>
         <div class="target-prices">
-          <div class="target">
-            <div class="target-value negative">${{ analysts.low }}</div>
+            <div class="target">
+            <div class="target-value negative">{% if analysts.low != "N/A" %}${{ analysts.low }}{% else %}N/A{% endif %}</div>
             <div class="target-label">Low Target</div>
           </div>
           <div class="target">
-            <div class="target-value">${{ analysts.avg }}</div>
+            <div class="target-value">{% if analysts.avg != "N/A" %}${{ analysts.avg }}{% else %}N/A{% endif %}</div>
             <div class="target-label">Avg Target</div>
           </div>
           <div class="target">
-            <div class="target-value positive">${{ analysts.high }}</div>
+            <div class="target-value positive">{% if analysts.high != "N/A" %}${{ analysts.high }}{% else %}N/A{% endif %}</div>
             <div class="target-label">High Target</div>
           </div>
         </div>
         {% if analysts.ratings %}
-        <table class="wf-table" style="font-size:12px;">
+        <table class="wf-table compact-table">
           <thead><tr><th>Date</th><th>Analyst</th><th>Action</th><th>Rating</th><th>Target</th></tr></thead>
           <tbody>
           {% for r in analysts.ratings[:5] %}
@@ -145,7 +136,7 @@
               <td>{{ r.firm }}</td>
               <td>{{ r.action }}</td>
               <td><span class="badge badge-{{ 'buy' if r.rating in ['Buy','Strong Buy','Overweight'] else ('sell' if r.rating in ['Sell','Strong Sell','Underweight'] else 'hold') }}">{{ r.rating }}</span></td>
-              <td>${{ r.target }}</td>
+              <td>{% if r.target != "N/A" %}${{ r.target }}{% else %}N/A{% endif %}</td>
             </tr>
           {% endfor %}
           </tbody>
@@ -168,8 +159,9 @@
             <td>${{ "%.2f"|format(p.price) }}</td>
             <td>{{ p.pe }}</td>
             <td>{{ p.mkt_cap }}</td>
-            <td class="{% if p.ytd >= 0 %}positive{% else %}negative{% endif %}">
-              {% if p.ytd >= 0 %}+{% endif %}{{ "%.1f"|format(p.ytd) }}%
+            {% set ytd_value = p.ytd if p.ytd is not none else 0 %}
+            <td class="{% if ytd_value > 0.05 %}positive{% elif ytd_value < -0.05 %}negative{% else %}text-muted{% endif %}">
+              {% if ytd_value > 0.05 %}+{{ "%.1f"|format(ytd_value) }}%{% elif ytd_value < -0.05 %}{{ "%.1f"|format(ytd_value) }}%{% else %}0.0%{% endif %}
             </td>
           </tr>
         {% endfor %}
@@ -182,7 +174,12 @@
 
 <!-- ── Plotly chart loader ──────────────────────────────────────────── -->
 <script>
-async function loadPriceChart(symbol, period) {
+async function loadPriceChart(symbol, period, periodButton) {
+  if (periodButton) {
+    document.querySelectorAll('[data-price-period]').forEach((btn) => {
+      btn.classList.toggle('active', btn === periodButton);
+    });
+  }
   const resp = await fetch(`/api/chart/${symbol}/price?period=${period}`);
   const spec = await resp.json();
   Plotly.newPlot('price-chart', spec.data, spec.layout, {responsive: true, displayModeBar: false});

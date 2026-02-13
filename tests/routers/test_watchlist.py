@@ -22,6 +22,39 @@ def test_watchlist_table_htmx(client, sample_watchlist):
     assert b"SNOW" in response.content
 
 
+def test_watchlist_table_refresh_uses_bypass_cache(client, sample_watchlist):
+    async def _fake_get_price(symbol: str, bypass_cache: bool = False):
+        _ = symbol
+        return {
+            "price": 150.0 if bypass_cache else 100.0,
+            "change": 1.5 if bypass_cache else 1.0,
+            "change_pct": 1.5 if bypass_cache else 1.0,
+            "updated": "now",
+        }
+
+    async def _fake_get_metrics(symbol: str, bypass_cache: bool = False):
+        _ = (symbol, bypass_cache)
+        return {"pe": "20"}
+
+    async def _fake_get_price_history(symbol: str, period: str = "1y", bypass_cache: bool = False):
+        _ = (symbol, period, bypass_cache)
+        return [
+            {"date": "2026-02-12", "close": 95.0},
+            {"date": "2026-02-13", "close": 105.0},
+        ]
+
+    client.app.state.data_service.get_price = _fake_get_price
+    client.app.state.data_service.get_metrics = _fake_get_metrics
+    client.app.state.data_service.get_price_history = _fake_get_price_history
+
+    baseline = client.get(f"/hx/watchlist/table/{sample_watchlist.id}")
+    refreshed = client.get(f"/hx/watchlist/table/{sample_watchlist.id}?refresh=1")
+    assert baseline.status_code == 200
+    assert refreshed.status_code == 200
+    assert b"$100.00" in baseline.content
+    assert b"$150.00" in refreshed.content
+
+
 def test_add_watchlist_item(client, sample_watchlist):
     response = client.post("/api/watchlist-items", data={
         "watchlist_id": sample_watchlist.id,

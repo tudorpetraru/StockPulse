@@ -1,29 +1,43 @@
-<!-- Watchlist table partial — swapped in via HTMX -->
 <div class="card card-flush">
   <table class="sp-table">
     <thead>
       <tr>
-        <th data-sort="ticker">Ticker</th>
-        <th>Price</th>
-        <th data-sort="change">Change</th>
+        {% set columns = [
+          ("ticker", "Ticker"),
+          ("price", "Price"),
+          ("change", "Change"),
+          ("pe", "P/E")
+        ] %}
+        {% for key, label in columns %}
+        <th
+          hx-get="/hx/watchlist/table/{{ active_watchlist.id }}?sort_by={{ key }}&sort_dir={% if sort_by == key and sort_dir == 'asc' %}desc{% else %}asc{% endif %}"
+          hx-target="#watchlist-table"
+          hx-swap="innerHTML"
+          data-sort="{{ key }}">
+          {{ label }}
+          {% if sort_by == key %}{% if sort_dir == "asc" %}↑{% else %}↓{% endif %}{% endif %}
+        </th>
+        {% endfor %}
         <th>52W Range</th>
-        <th>P/E</th>
         <th>Notes</th>
         <th></th>
       </tr>
     </thead>
     <tbody>
-      {% for item in items %}
+      {% for row in watch_rows %}
+      {% set item = row.item %}
       <tr>
         <td><a href="/ticker/{{ item.ticker }}" class="ticker-link">{{ item.ticker }}</a></td>
-        <td>N/A</td>
-        <td class="text-muted">N/A</td>
-        <td class="text-muted" style="font-size:12px;">N/A</td>
-        <td>N/A</td>
-        <td style="font-size:12px;" class="text-muted">{{ item.notes or "" }}</td>
+        <td>{% if row.price is not none %}${{ "{:.2f}".format(row.price) }}{% else %}N/A{% endif %}</td>
+        <td class="{% if row.change_pct is not none and row.change_pct > 0.05 %}positive{% elif row.change_pct is not none and row.change_pct < -0.05 %}negative{% else %}text-muted{% endif %}">
+          {% if row.change_pct is none %}N/A{% elif row.change_pct > 0.05 %}+{{ "{:.1f}".format(row.change_pct) }}%{% elif row.change_pct < -0.05 %}{{ "{:.1f}".format(row.change_pct) }}%{% else %}0.0%{% endif %}
+        </td>
+        <td>{{ row.pe }}</td>
+        <td class="text-muted">{{ row.range_52w }}</td>
+        <td class="watchlist-notes text-muted">{{ item.notes or "" }}</td>
         <td>
-          <button class="btn btn-sm" style="color:var(--negative);"
-                  hx-delete="/api/watchlist-items/{{ item.id }}"
+          <button class="btn btn-sm watchlist-remove-btn"
+                  hx-delete="/api/watchlist-items/{{ item.id }}?sort_by={{ sort_by }}&sort_dir={{ sort_dir }}"
                   hx-target="#watchlist-table"
                   hx-swap="innerHTML"
                   hx-confirm="Remove {{ item.ticker }}?">
@@ -34,8 +48,8 @@
       {% endfor %}
     </tbody>
   </table>
-  {% if not items %}
-  <div style="padding:24px; text-align:center;" class="text-muted">
+  {% if not watch_rows %}
+  <div class="table-empty-state text-muted">
     No tickers in this watchlist. Add one above to get started.
   </div>
   {% endif %}

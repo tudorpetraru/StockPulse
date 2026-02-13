@@ -4,7 +4,6 @@
 
 {% block content %}
 <div class="grid-sidebar">
-  <!-- Sidebar -->
   <div class="sidebar">
     <div class="sidebar-title">Portfolios</div>
     {% for p in portfolios %}
@@ -15,24 +14,28 @@
     {% endfor %}
     <div class="sidebar-divider"></div>
     <div x-data="{ open: false }">
-      <a class="sidebar-item" style="color:var(--blue); font-size:12px; cursor:pointer;" @click="open = !open">+ New Portfolio</a>
-      <form x-show="open" action="/api/portfolios" method="post" style="padding:8px 12px;">
+      <button type="button" class="sidebar-item sidebar-new-action" @click="open = !open">+ New Portfolio</button>
+      <form x-show="open" action="/api/portfolios" method="post" class="sidebar-inline-form">
         <input type="hidden" name="csrf_token" value="">
-        <input class="sp-input" name="name" placeholder="Portfolio name" required style="width:100%; margin-bottom:8px;">
-        <button type="submit" class="btn btn-primary btn-sm" style="width:100%;">Create</button>
+        <label class="visually-hidden" for="new-portfolio-name">Portfolio Name</label>
+        <input id="new-portfolio-name" class="sp-input" name="name" placeholder="Portfolio name" required>
+        <button type="submit" class="btn btn-primary btn-sm">Create</button>
       </form>
     </div>
     <div class="sidebar-divider"></div>
     <div class="sidebar-title">Actions</div>
-    <a class="sidebar-item" style="cursor:pointer;" onclick="openModal('add-position-modal')">+ Add Position</a>
-    <a class="sidebar-item" style="cursor:pointer;" data-action="refresh">Refresh Prices</a>
+    <button type="button" class="sidebar-item" onclick="openModal('add-position-modal')">+ Add Position</button>
+    <a class="sidebar-item"
+       data-action="refresh"
+       href="/portfolio?portfolio_id={{ active_portfolio.id }}&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}&refresh=1">Refresh Prices</a>
   </div>
 
-  <!-- Main Content -->
   <div>
-    <h2 class="page-title">{{ active_portfolio.name }}</h2>
+    <div class="page-header-row">
+      <h2 class="page-title">{{ active_portfolio.name }}</h2>
+      <div class="text-muted page-refresh-meta">Last refreshed: {{ last_refreshed }}</div>
+    </div>
 
-    <!-- Summary Stats -->
     <div class="card">
       <div class="grid-4">
         <div class="stat">
@@ -64,27 +67,19 @@
       </div>
     </div>
 
-    <!-- Allocation Charts -->
     <div class="grid-2">
       <div class="card">
         <div class="card-title">Sector Allocation</div>
-        <div class="chart-placeholder" style="height:200px;">
-          <div style="font-size:32px;">Sector Donut</div>
-          <div style="font-size:12px;" class="text-muted">Plotly chart — populates after integration with DataService</div>
-        </div>
+        <div id="portfolio-sector-chart" class="portfolio-chart"></div>
       </div>
       <div class="card">
         <div class="card-title">Position Size</div>
-        <div class="chart-placeholder" style="height:200px;">
-          <div style="font-size:32px;">Position Bars</div>
-          <div style="font-size:12px;" class="text-muted">Plotly chart — populates after integration with DataService</div>
-        </div>
+        <div id="portfolio-positions-chart" class="portfolio-chart"></div>
       </div>
     </div>
 
-    <!-- Positions Table -->
     <div id="positions-table"
-         hx-get="/hx/portfolio/table?portfolio_id={{ active_portfolio.id }}"
+         hx-get="/hx/portfolio/table?portfolio_id={{ active_portfolio.id }}&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}"
          hx-trigger="portfolioUpdated from:body"
          hx-swap="innerHTML">
       {% include "partials/portfolio_table.html" %}
@@ -92,7 +87,6 @@
   </div>
 </div>
 
-<!-- Add Position Modal -->
 <div id="add-position-modal" class="modal-overlay hidden" onclick="if(event.target===this) closeModal('add-position-modal')">
   <div class="modal">
     <h3>Add Position</h3>
@@ -102,6 +96,8 @@
           hx-on::after-request="closeModal('add-position-modal')">
       <input type="hidden" name="csrf_token" value="">
       <input type="hidden" name="portfolio_id" value="{{ active_portfolio.id }}">
+      <input type="hidden" name="sort_by" value="{{ sort_by }}">
+      <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
       <div class="form-group">
         <label for="ticker">Ticker Symbol</label>
         <input class="sp-input" id="ticker" name="ticker" placeholder="e.g., AAPL" required>
@@ -129,4 +125,29 @@
     </form>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  async function loadPortfolioCharts(portfolioId) {
+    const [sectorResp, positionsResp] = await Promise.all([
+      fetch(`/api/chart/portfolio/${portfolioId}/sector`),
+      fetch(`/api/chart/portfolio/${portfolioId}/positions`)
+    ]);
+    const sectorSpec = await sectorResp.json();
+    const positionSpec = await positionsResp.json();
+    Plotly.newPlot('portfolio-sector-chart', sectorSpec.data, sectorSpec.layout, { responsive: true, displayModeBar: false });
+    Plotly.newPlot('portfolio-positions-chart', positionSpec.data, positionSpec.layout, { responsive: true, displayModeBar: false });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    loadPortfolioCharts({{ active_portfolio.id }});
+  });
+
+  document.body.addEventListener('htmx:afterSwap', function (evt) {
+    if (evt.target && evt.target.id === 'positions-table') {
+      loadPortfolioCharts({{ active_portfolio.id }});
+    }
+  });
+</script>
 {% endblock %}

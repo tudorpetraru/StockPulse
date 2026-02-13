@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 from datetime import date
 from typing import Any
 
@@ -11,6 +12,10 @@ class GoogleNewsProvider(BaseProvider):
     def __init__(self, lang: str = "en", country: str = "US") -> None:
         self._client: Any | None = None
         self._init_error: Exception | None = None
+        if not hasattr(base64, "decodestring"):
+            base64.decodestring = base64.decodebytes  # type: ignore[attr-defined]
+        if not hasattr(base64, "encodestring"):
+            base64.encodestring = base64.encodebytes  # type: ignore[attr-defined]
         try:
             from pygooglenews import GoogleNews  # type: ignore[import-not-found]
 

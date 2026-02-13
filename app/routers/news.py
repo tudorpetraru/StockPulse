@@ -48,13 +48,23 @@ def _parse_custom_input(raw: str) -> tuple[list[str] | None, str | None]:
 
 
 def _normalize_news_item(row: dict, default_ticker: str | None = None) -> dict:
-    published = str(row.get("published") or row.get("date") or row.get("time_ago") or "N/A")
+    source_raw = row.get("source") or row.get("Source")
+    if isinstance(source_raw, dict):
+        source = source_raw.get("displayName") or source_raw.get("title") or source_raw.get("name") or "Unknown"
+    else:
+        source = source_raw or "Unknown"
+    published = str(row.get("published") or row.get("date") or row.get("Date") or row.get("time_ago") or "N/A")
+    ticker_raw = row.get("ticker") or row.get("symbol") or default_ticker
+    ticker = str(ticker_raw).strip().upper() if ticker_raw else None
+    if ticker and not re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,9}", ticker):
+        ticker = None
+
     return {
-        "title": row.get("title") or "Untitled",
-        "url": row.get("url") or row.get("link") or "#",
-        "source": row.get("source") or "Unknown",
+        "title": row.get("title") or row.get("Title") or row.get("headline") or "Untitled",
+        "url": row.get("url") or row.get("link") or row.get("Link") or "#",
+        "source": source,
         "published": published,
-        "ticker": row.get("ticker") or row.get("symbol") or default_ticker,
+        "ticker": ticker,
         "summary": row.get("summary") or "",
     }
 

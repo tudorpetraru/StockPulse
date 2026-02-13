@@ -29,12 +29,15 @@ Local-first stock research workstation built with FastAPI, server-rendered templ
 - Portfolio management:
   - create/delete portfolios
   - add/update/delete positions
-  - HTMX table refresh
+  - live per-row quote hydration (current/value/P&L/day-change)
+  - sortable HTMX table refresh with manual refresh control
+  - portfolio allocation chart APIs (sector + positions)
 - Watchlist management:
   - create/delete watchlists
   - add/update/delete items
   - quick add from ticker
-  - HTMX table refresh
+  - live quote/metrics columns (price/change/P-E/52W range)
+  - sortable HTMX table refresh with manual refresh control
 - News feed:
   - all / portfolio / watchlist / custom filters
   - paginated HTMX feed endpoint
@@ -90,9 +93,16 @@ Local-first stock research workstation built with FastAPI, server-rendered templ
 
 - PicoCSS (classless base from CDN)
 - HTMX
-- Alpine.js
+- Alpine.js (CSP-safe build via `@alpinejs/csp`)
 - Plotly.js
 - custom CSS/JS in `app/static/`
+
+## Key HTTP Interfaces
+
+- `GET /hx/portfolio/table?portfolio_id=...&sort_by=...&sort_dir=...&refresh=...`
+- `GET /hx/watchlist/table/{watchlist_id}?sort_by=...&sort_dir=...&refresh=...`
+- `GET /api/chart/portfolio/{portfolio_id}/sector`
+- `GET /api/chart/portfolio/{portfolio_id}/positions`
 
 ### Dev tooling
 
@@ -211,13 +221,13 @@ pytest -q
 - This is currently a local-first, single-instance app with no auth/login model.
 - Background jobs run in-process via APScheduler. If the process is down, jobs do not run.
 - Market/news providers are external and can throttle/fail; the app uses fallback and stale-cache behavior, but data completeness is not guaranteed.
-- Portfolio and watchlist tables still render several market fields as placeholders (`N/A`) and do not yet show fully live per-row quote analytics.
+- Portfolio/watchlist quote fields are hydrated at render-time and can degrade to `N/A` when providers are unavailable.
 - CSP currently allows `'unsafe-inline'` for scripts/styles to support existing template patterns; tighten further before internet-facing deployment.
 - SQLite WAL sidecar files (`*.db-wal`, `*.db-shm`) are expected during runtime.
 
 ## Still To Do
 
-1. Replace portfolio/watchlist placeholder quote columns with live per-row pricing and day-change metrics.
+1. Add optional background quote prefetching/streaming for lower-latency portfolio/watchlist updates.
 2. Add authentication/authorization and user isolation for multi-user deployments.
 3. Move scheduler jobs to a dedicated worker process for production reliability.
 4. Add stronger observability (structured request logs, job metrics, provider failure dashboards).

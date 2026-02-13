@@ -34,16 +34,16 @@
                 <tr>
                     <td class="ticker"><a href="/ticker/{{ r.ticker }}">{{ r.ticker }}</a></td>
                     <td>{{ r.company }}</td>
-                    <td>${{ "%.2f"|format(r.price) if r.price else "N/A" }}</td>
+                    <td>${{ "%.2f"|format(r.price) if r.price is not none else "N/A" }}</td>
+                    {% set change_pct = r.change_pct if r.change_pct is not none else none %}
                     <td
-                        class="{% if r.change_pct and r.change_pct >= 0 %}positive{% elif r.change_pct %}negative{% endif %}">
-                        {% if r.change_pct is not none %}{% if r.change_pct >= 0 %}+{% endif %}{{
-                        "%.1f"|format(r.change_pct) }}%{% else %}N/A{% endif %}
+                        class="{% if change_pct is not none and change_pct > 0.05 %}positive{% elif change_pct is not none and change_pct < -0.05 %}negative{% endif %}">
+                        {% if change_pct is none %}N/A{% elif change_pct > 0.05 %}+{{ "%.1f"|format(change_pct) }}%{% elif change_pct < -0.05 %}{{ "%.1f"|format(change_pct) }}%{% else %}0.0%{% endif %}
                     </td>
                     <td>{{ r.mkt_cap if r.mkt_cap else "N/A" }}</td>
-                    <td>{{ "%.1f"|format(r.pe) if r.pe else "N/A" }}</td>
-                    <td>{{ "%.2f"|format(r.eps) if r.eps else "N/A" }}</td>
-                    <td>{{ "{:,.0f}".format(r.volume) if r.volume else "N/A" }}</td>
+                    <td>{{ "%.1f"|format(r.pe) if r.pe is not none else "N/A" }}</td>
+                    <td>{{ "%.2f"|format(r.eps) if r.eps is not none else "N/A" }}</td>
+                    <td>{{ "{:,.0f}".format(r.volume) if r.volume is not none else "N/A" }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

@@ -49,10 +49,10 @@
 <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <div class="card-title" style="margin-bottom:0;">Consensus Target vs Actual Price</div>
-        <div class="period-selector" style="margin-bottom:0;">
-            <button class="period-btn" onclick="loadConsensusChart('{{ symbol }}', '1Y')">1Y</button>
-            <button class="period-btn active" onclick="loadConsensusChart('{{ symbol }}', '2Y')">2Y</button>
-            <button class="period-btn" onclick="loadConsensusChart('{{ symbol }}', 'All')">All</button>
+        <div class="period-selector" id="consensus-period-selector" style="margin-bottom:0;">
+            <button type="button" class="period-btn" data-consensus-period="1Y" onclick="loadConsensusChart('{{ symbol }}', '1Y', this)">1Y</button>
+            <button type="button" class="period-btn active" data-consensus-period="2Y" onclick="loadConsensusChart('{{ symbol }}', '2Y', this)">2Y</button>
+            <button type="button" class="period-btn" data-consensus-period="All" onclick="loadConsensusChart('{{ symbol }}', 'All', this)">All</button>
         </div>
     </div>
     <div id="consensus-chart" style="height:300px;"></div>
@@ -119,7 +119,7 @@
                 <td><span
                         class="badge {% if a.latest_rating in ['Buy','Strong Buy','Overweight'] %}badge-green{% elif a.latest_rating in ['Sell','Strong Sell','Underweight'] %}badge-red{% else %}badge-amber{% endif %}">{{
                         a.latest_rating }}</span></td>
-                <td>${{ a.latest_target }}</td>
+                <td>{% if a.latest_target != "N/A" %}${{ a.latest_target }}{% else %}N/A{% endif %}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -147,10 +147,10 @@
                     class="badge {% if p.rating in ['Buy','Strong Buy','Overweight'] %}badge-green{% elif p.rating in ['Sell','Strong Sell','Underweight'] %}badge-red{% else %}badge-amber{% endif %}"
                     style="margin-left:6px;">{{ p.rating }}</span>
             </div>
-            <div class="prediction-detail">{{ p.action }} with target <strong>${{ p.target }}</strong> (implied {{
+            <div class="prediction-detail">{{ p.action }} with target <strong>{% if p.target != "N/A" %}${{ p.target }}{% else %}N/A{% endif %}</strong> (implied {{
                 p.implied_return }})</div>
             {% if p.resolved %}
-            <div class="prediction-detail">Actual price on {{ p.resolve_date }}: <strong>${{ p.actual_price }}</strong>
+            <div class="prediction-detail">Actual price on {{ p.resolve_date }}: <strong>{% if p.actual_price != "N/A" %}${{ p.actual_price }}{% else %}N/A{% endif %}</strong>
                 (actual return: {{ p.actual_return }})</div>
             {% else %}
             <div class="prediction-detail" style="color:var(--gray-400);">Resolves: {{ p.resolve_date }}</div>
@@ -176,7 +176,12 @@
 {% endif %}
 
 <script>
-    async function loadConsensusChart(symbol, period) {
+    async function loadConsensusChart(symbol, period, periodButton) {
+        if (periodButton) {
+            document.querySelectorAll('[data-consensus-period]').forEach((btn) => {
+                btn.classList.toggle('active', btn === periodButton);
+            });
+        }
         const resp = await fetch(`/api/chart/${symbol}/consensus?period=${period}`);
         const spec = await resp.json();
         Plotly.newPlot('consensus-chart', spec.data, spec.layout, { responsive: true, displayModeBar: false });

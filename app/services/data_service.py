@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import re
 from datetime import UTC, datetime
 from collections.abc import Awaitable, Callable
@@ -162,13 +163,14 @@ class DataService:
             "description": _as_str(_first(data, "description", "longBusinessSummary")),
         }
 
-    async def get_price(self, symbol: str) -> dict[str, Any]:
+    async def get_price(self, symbol: str, bypass_cache: bool = False) -> dict[str, Any]:
         upper_symbol = symbol.upper()
         panel = await self._panel(
             cache_key=self.cache.build_key("price", upper_symbol),
             cache_category="price",
             primary=lambda: self.yfinance.get_current_price(upper_symbol),
             fallback=lambda: self.finviz.get_current_price(upper_symbol),
+            bypass_cache=bypass_cache,
         )
         price = _to_float(panel.data) or 0.0
 
@@ -178,6 +180,7 @@ class DataService:
             change_pct = day_change * 100.0
         else:
             change_pct = day_change or 0.0
+        change_pct = _clip_near_zero(change_pct)
         change = price * (change_pct / 100.0)
 
         return {
@@ -187,13 +190,14 @@ class DataService:
             "updated": datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
         }
 
-    async def get_metrics(self, symbol: str) -> dict[str, Any]:
+    async def get_metrics(self, symbol: str, bypass_cache: bool = False) -> dict[str, Any]:
         upper_symbol = symbol.upper()
         panel = await self._panel(
             cache_key=self.cache.build_key("metrics", upper_symbol),
             cache_category="metrics",
             primary=lambda: self.finviz.get_key_metrics(upper_symbol),
             fallback=lambda: self.yfinance.get_key_metrics(upper_symbol),
+            bypass_cache=bypass_cache,
         )
         data = panel.data if isinstance(panel.data, dict) else {}
 
@@ -294,9 +298,9 @@ class DataService:
             parsed = _parse_datetime(published)
             news.append(
                 {
-                    "title": _as_str(_first(row, "title", "News", "headline")) or "Untitled",
+                    "title": _as_str(_first(row, "title", "Title", "News", "headline")) or "Untitled",
                     "link": _as_str(_first(row, "url", "Link", "link")) or "#",
-                    "source": _as_str(_first(row, "source", "Source")) or "Unknown",
+                    "source": _source_name(_first(row, "source", "Source", "provider")) or "Unknown",
                     "date": parsed.strftime("%Y-%m-%d") if parsed else (published or "N/A"),
                     "time_ago": _time_ago(parsed) if parsed else "recent",
                     "ticker": upper_symbol,
@@ -355,12 +359,13 @@ class DataService:
         next_date = _as_str(data.get("next_date")).strip() or "N/A"
         return {"history": history[:8], "next_date": next_date}
 
-    async def get_price_history(self, symbol: str, period: str = "1y") -> list[dict[str, Any]]:
+    async def get_price_history(self, symbol: str, period: str = "1y", bypass_cache: bool = False) -> list[dict[str, Any]]:
         upper_symbol = symbol.upper()
         panel = await self._panel(
             cache_key=self.cache.build_key("price", upper_symbol, period=period),
             cache_category="price",
             primary=lambda: self.yfinance.get_price_history(upper_symbol, period=period),
+            bypass_cache=bypass_cache,
         )
         rows = panel.data if isinstance(panel.data, list) else []
         history: list[dict[str, Any]] = []
@@ -387,7 +392,10 @@ class DataService:
         cache_key = self.cache.build_key("profile", upper_symbol, panel="peers")
         cached = self.cache.get(cache_key)
         if isinstance(cached, list):
-            return cached
+            normalized_cached = _normalize_peer_rows(cached, upper_symbol)
+            if normalized_cached != cached:
+                self.cache.set(cache_key, normalized_cached, ttl_for("profile"))
+            return normalized_cached
 
         profile = await self.get_profile(upper_symbol)
         sector = _as_str(profile.get("sector")).strip()
@@ -409,14 +417,14 @@ class DataService:
                 peer_symbol = _as_str(row.get("Ticker")).upper()
                 if not peer_symbol or peer_symbol == upper_symbol:
                     continue
-                ytd = _to_percent_float(_first(row, "Perf YTD", "Perf YTD%"))
+                ytd = _clip_near_zero(_to_percent_float(_first(row, "Perf YTD", "Perf YTD%")))
                 peers.append(
                     {
                         "symbol": peer_symbol,
                         "name": _as_str(row.get("Company")) or peer_symbol,
                         "price": _to_float(row.get("Price")) or 0.0,
                         "pe": _fmt_metric(_first(row, "P/E")),
-                        "mkt_cap": _as_str(row.get("Market Cap")) or "N/A",
+                        "mkt_cap": _fmt_market_cap(row.get("Market Cap")),
                         "ytd": ytd or 0.0,
                     }
                 )
@@ -430,15 +438,19 @@ class DataService:
             logger.warning("Peers lookup failed for %s: %s", upper_symbol, exc)
             peers = []
 
-        self.cache.set(cache_key, peers, ttl_for("profile"))
-        return peers
+        normalized_peers = _normalize_peer_rows(peers, upper_symbol)
+        self.cache.set(cache_key, normalized_peers, ttl_for("profile"))
+        return normalized_peers
 
     async def screen_stocks(self, filters: dict[str, Any], limit: int = 300) -> list[dict[str, Any]]:
         """Run a screener query via finviz overview with best-effort filter mapping."""
         cache_key = self.cache.build_key("screener", "US", **filters)
         cached = self.cache.get(cache_key)
-        if cached is not None:
-            return cached
+        if isinstance(cached, list):
+            normalized_cached = _normalize_screener_rows(cached)
+            if normalized_cached != cached:
+                self.cache.set(cache_key, normalized_cached, ttl_for("screener"))
+            return normalized_cached
 
         finviz_filters = _map_filters_to_finviz(filters)
 
@@ -457,8 +469,8 @@ class DataService:
                         "ticker": _as_str(row.get("Ticker")),
                         "company": _as_str(row.get("Company")),
                         "price": _to_float(row.get("Price")),
-                        "change_pct": _to_percent_float(row.get("Change")),
-                        "mkt_cap": _as_str(row.get("Market Cap")),
+                        "change_pct": _clip_near_zero(_to_percent_float(row.get("Change"))),
+                        "mkt_cap": _fmt_market_cap(row.get("Market Cap")),
                         "mkt_cap_num": _to_mkt_cap_num(row.get("Market Cap")),
                         "pe": _to_float(row.get("P/E")),
                         "eps": _to_float(row.get("EPS (ttm)")),
@@ -473,8 +485,9 @@ class DataService:
             logger.warning("Screener query failed: %s", exc)
             rows = []
 
-        self.cache.set(cache_key, rows, ttl_for("screener"))
-        return rows
+        normalized_rows = _normalize_screener_rows(rows)
+        self.cache.set(cache_key, normalized_rows, ttl_for("screener"))
+        return normalized_rows
 
 
 def _map_filters_to_finviz(filters: dict[str, Any]) -> dict[str, str]:
@@ -569,12 +582,18 @@ def _to_float(value: Any) -> float | None:
     if value is None:
         return None
     if isinstance(value, (int, float)):
-        return float(value)
+        num = float(value)
+        if math.isnan(num) or math.isinf(num):
+            return None
+        return num
     text = str(value).strip()
     if text in {"", "-", "N/A"}:
         return None
     try:
-        return float(text.replace(",", ""))
+        num = float(text.replace(",", ""))
+        if math.isnan(num) or math.isinf(num):
+            return None
+        return num
     except ValueError:
         return None
 
@@ -586,7 +605,10 @@ def _to_percent_float(value: Any) -> float | None:
     if text in {"", "-", "N/A"}:
         return None
     try:
-        return float(text)
+        num = float(text)
+        if math.isnan(num) or math.isinf(num):
+            return None
+        return num
     except ValueError:
         return None
 
@@ -621,6 +643,8 @@ def _fmt_metric(value: Any, percent: bool = False) -> str:
     number = _to_float(value)
     if number is None:
         text = _as_str(value).strip()
+        if text.lower() in {"nan", "inf", "+inf", "-inf"}:
+            return "N/A"
         return text if text else "N/A"
     if percent:
         pct = number * 100.0 if abs(number) <= 1 else number
@@ -644,6 +668,12 @@ def _fmt_market_cap(value: Any) -> str:
     if number >= 1e6:
         return f"{number / 1e6:.2f}M"
     return f"{number:,.0f}"
+
+
+def _clip_near_zero(value: float | None, threshold: float = 0.05) -> float | None:
+    if value is None:
+        return None
+    return 0.0 if abs(value) < threshold else value
 
 
 def _extract_columns(groups: list[list[dict[str, Any]]]) -> list[str]:
@@ -678,6 +708,53 @@ def _normalize_financial_rows(rows: list[dict[str, Any]], columns: list[str]) ->
     return normalized
 
 
+def _normalize_peer_rows(rows: list[dict[str, Any]], target_symbol: str | None = None) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    upper_target = (target_symbol or "").upper().strip()
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        symbol = _as_str(_first(row, "symbol", "ticker", "Ticker")).upper().strip()
+        if not symbol:
+            continue
+        if upper_target and symbol == upper_target:
+            continue
+
+        ytd = _clip_near_zero(_to_percent_float(_first(row, "ytd", "Perf YTD", "Perf YTD%")))
+        normalized.append(
+            {
+                "symbol": symbol,
+                "name": _as_str(_first(row, "name", "company", "Company")) or symbol,
+                "price": _to_float(_first(row, "price", "Price")) or 0.0,
+                "pe": _fmt_metric(_first(row, "pe", "P/E")),
+                "mkt_cap": _fmt_market_cap(_first(row, "mkt_cap", "market_cap", "Market Cap")),
+                "ytd": ytd or 0.0,
+            }
+        )
+    return normalized
+
+
+def _normalize_screener_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        normalized.append(
+            {
+                "ticker": _as_str(_first(row, "ticker", "Ticker")).upper(),
+                "company": _as_str(_first(row, "company", "Company")),
+                "price": _to_float(_first(row, "price", "Price")),
+                "change_pct": _clip_near_zero(_to_percent_float(_first(row, "change_pct", "change", "Change"))),
+                "mkt_cap": _fmt_market_cap(_first(row, "mkt_cap", "market_cap", "Market Cap")),
+                "mkt_cap_num": _to_mkt_cap_num(_first(row, "mkt_cap_num", "mkt_cap", "market_cap", "Market Cap")),
+                "pe": _to_float(_first(row, "pe", "P/E")),
+                "eps": _to_float(_first(row, "eps", "EPS (ttm)")),
+                "volume": _to_float(_first(row, "volume", "Volume")),
+            }
+        )
+    return normalized
+
+
 def _parse_datetime(value: str) -> datetime | None:
     if not value:
         return None
@@ -709,6 +786,13 @@ def _time_ago(ts: datetime | None) -> str:
         return f"{hours}h ago"
     days = int(delta.total_seconds() // 86400)
     return f"{days}d ago"
+
+
+def _source_name(value: Any) -> str:
+    if isinstance(value, dict):
+        text = _as_str(value.get("displayName") or value.get("title") or value.get("name"))
+        return text.strip()
+    return _as_str(value).strip()
 
 
 def _normalize_date(value: Any) -> str:

@@ -14,6 +14,7 @@ _BLUE = "#1976D2"
 _RED = "#C62828"
 _GREEN = "#2E7D32"
 _AMBER = "#F57F17"
+_PURPLE = "#7B1FA2"
 _GRAY_VOLUME = "rgba(189,189,189,0.50)"
 _GRID = "#EEEEEE"
 _BG = "#FFFFFF"
@@ -25,6 +26,18 @@ _PERIOD_MAP: dict[str, str] = {
     "1Y": "1y",
     "5Y": "5y",
 }
+
+_PORTFOLIO_COLORS = [
+    _NAVY,
+    _BLUE,
+    _GREEN,
+    _AMBER,
+    _RED,
+    _PURPLE,
+    "#757575",
+    "#9E9E9E",
+    "#BDBDBD",
+]
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -211,6 +224,63 @@ def build_consensus_chart(
 
     layout = _base_layout(f"{symbol} — Consensus vs Actual ({period})")
     return {"data": traces, "layout": layout}
+
+
+def build_portfolio_sector_chart(points: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build a donut chart for portfolio sector allocation."""
+    if not points:
+        return _empty_chart("No sector data available")
+
+    labels = [str(point["label"]) for point in points]
+    values = [float(point["value"]) for point in points]
+    return {
+        "data": [
+            {
+                "type": "pie",
+                "labels": labels,
+                "values": values,
+                "hole": 0.45,
+                "sort": False,
+                "direction": "clockwise",
+                "marker": {"colors": _PORTFOLIO_COLORS[: len(labels)]},
+                "textinfo": "label+percent",
+            }
+        ],
+        "layout": {
+            "plot_bgcolor": _BG,
+            "paper_bgcolor": _BG,
+            "margin": {"l": 10, "r": 10, "t": 20, "b": 20},
+            "showlegend": False,
+        },
+    }
+
+
+def build_portfolio_positions_chart(points: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build a bar chart for portfolio position-size allocation."""
+    if not points:
+        return _empty_chart("No position data available")
+
+    labels = [str(point["label"]) for point in points]
+    values = [float(point["value"]) for point in points]
+    return {
+        "data": [
+            {
+                "type": "bar",
+                "x": labels,
+                "y": values,
+                "marker": {"color": _PORTFOLIO_COLORS[: len(labels)]},
+                "hovertemplate": "%{x}<br>$%{y:,.0f}<extra></extra>",
+            }
+        ],
+        "layout": {
+            "plot_bgcolor": _BG,
+            "paper_bgcolor": _BG,
+            "margin": {"l": 50, "r": 10, "t": 20, "b": 40},
+            "xaxis": {"title": "", "tickangle": -25},
+            "yaxis": {"title": "Value ($)", "gridcolor": _GRID},
+            "showlegend": False,
+        },
+    }
 
 
 # ---------------------------------------------------------------------------

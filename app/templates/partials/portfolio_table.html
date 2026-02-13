@@ -1,42 +1,52 @@
-<!-- Portfolio positions table partial — swapped in via HTMX -->
 <div class="card card-flush">
   <table class="sp-table">
     <thead>
       <tr>
-        <th data-sort="ticker">Ticker</th>
-        <th data-sort="shares">Shares</th>
+        {% set columns = [
+          ("ticker", "Ticker"),
+          ("shares", "Shares"),
+          ("current", "Current"),
+          ("value", "Value"),
+          ("pl", "P&L $"),
+          ("day_change", "Day Chg")
+        ] %}
+        {% for key, label in columns %}
+        <th
+          hx-get="/hx/portfolio/table?portfolio_id={{ active_portfolio.id }}&sort_by={{ key }}&sort_dir={% if sort_by == key and sort_dir == 'asc' %}desc{% else %}asc{% endif %}"
+          hx-target="#positions-table"
+          hx-swap="innerHTML"
+          data-sort="{{ key }}">
+          {{ label }}
+          {% if sort_by == key %}{% if sort_dir == "asc" %}↑{% else %}↓{% endif %}{% endif %}
+        </th>
+        {% endfor %}
         <th>Avg Cost</th>
-        <th>Current</th>
-        <th>Value</th>
-        <th data-sort="pl">P&L $</th>
         <th>P&L %</th>
-        <th>Day Chg</th>
         <th></th>
       </tr>
     </thead>
     <tbody>
-      {% for pos in positions %}
-      {% set current_price = pos.avg_cost %}
-      {% set value = pos.shares * current_price %}
-      {% set cost = pos.shares * pos.avg_cost %}
-      {% set pl = value - cost %}
-      {% set pl_pct = (pl / cost * 100) if cost > 0 else 0 %}
+      {% for row in quote_rows %}
+      {% set pos = row.position %}
       <tr>
         <td><a href="/ticker/{{ pos.ticker }}" class="ticker-link">{{ pos.ticker }}</a></td>
         <td>{{ "{:.0f}".format(pos.shares) if pos.shares == pos.shares | int else "{:.2f}".format(pos.shares) }}</td>
+        <td>${{ "{:.2f}".format(row.current) }}</td>
+        <td>${{ "{:,.0f}".format(row.value) }}</td>
+        <td class="{% if row.pl >= 0 %}positive{% else %}negative{% endif %}">
+          {{ "+" if row.pl >= 0 }}${{ "{:,.0f}".format(row.pl) }}
+        </td>
+        <td class="{% if row.day_change > 0.5 %}positive{% elif row.day_change < -0.5 %}negative{% else %}text-muted{% endif %}">
+          {% if row.day_change > 0.5 %}+{{ "{:,.0f}".format(row.day_change) }}{% elif row.day_change < -0.5 %}{{ "{:,.0f}".format(row.day_change) }}{% else %}$0{% endif %}
+          {% if row.day_change_pct > 0.05 %}(+{{ "{:.1f}".format(row.day_change_pct) }}%){% elif row.day_change_pct < -0.05 %}({{ "{:.1f}".format(row.day_change_pct) }}%){% endif %}
+        </td>
         <td>${{ "{:.2f}".format(pos.avg_cost) }}</td>
-        <td>${{ "{:.2f}".format(current_price) }}</td>
-        <td>${{ "{:,.0f}".format(value) }}</td>
-        <td class="{% if pl >= 0 %}positive{% else %}negative{% endif %}">
-          {{ "+" if pl >= 0 }}${{ "{:,.0f}".format(pl) }}
+        <td class="{% if row.pl_pct >= 0 %}positive{% else %}negative{% endif %}">
+          {{ "+" if row.pl_pct >= 0 }}{{ "{:.1f}".format(row.pl_pct) }}%
         </td>
-        <td class="{% if pl_pct >= 0 %}positive{% else %}negative{% endif %}">
-          {{ "+" if pl_pct >= 0 }}{{ "{:.1f}".format(pl_pct) }}%
-        </td>
-        <td class="text-muted">N/A</td>
         <td>
           <button class="btn btn-sm"
-                  hx-delete="/api/positions/{{ pos.id }}"
+                  hx-delete="/api/positions/{{ pos.id }}?sort_by={{ sort_by }}&sort_dir={{ sort_dir }}"
                   hx-target="#positions-table"
                   hx-swap="innerHTML"
                   hx-confirm="Delete {{ pos.ticker }} position?">
@@ -45,24 +55,27 @@
         </td>
       </tr>
       {% endfor %}
-      {% if positions %}
+      {% if quote_rows %}
       <tr class="total-row">
-        <td colspan="4" style="text-align:right;">Total</td>
+        <td colspan="3" class="sp-table-total-cell">Total</td>
         <td>${{ "{:,.0f}".format(stats.total_value) }}</td>
         <td class="{% if stats.total_pl >= 0 %}positive{% else %}negative{% endif %}">
           {{ "+" if stats.total_pl >= 0 }}${{ "{:,.0f}".format(stats.total_pl) }}
         </td>
+        <td class="{% if stats.day_pl >= 0 %}positive{% else %}negative{% endif %}">
+          {{ "+" if stats.day_pl >= 0 }}${{ "{:,.0f}".format(stats.day_pl) }}
+        </td>
+        <td></td>
         <td class="{% if stats.total_pl_pct >= 0 %}positive{% else %}negative{% endif %}">
           {{ "+" if stats.total_pl_pct >= 0 }}{{ "{:.1f}".format(stats.total_pl_pct) }}%
         </td>
-        <td></td>
         <td></td>
       </tr>
       {% endif %}
     </tbody>
   </table>
-  {% if not positions %}
-  <div style="padding:24px; text-align:center;" class="text-muted">
+  {% if not quote_rows %}
+  <div class="table-empty-state text-muted">
     No positions yet. Click "Add Position" to get started.
   </div>
   {% endif %}
