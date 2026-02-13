@@ -4,14 +4,19 @@ import asyncio
 from datetime import date
 from typing import Any
 
-from pygooglenews import GoogleNews
-
 from app.services.providers.base import BaseProvider, DataUnavailable
 
 
 class GoogleNewsProvider(BaseProvider):
     def __init__(self, lang: str = "en", country: str = "US") -> None:
-        self._client = GoogleNews(lang=lang, country=country)
+        self._client: Any | None = None
+        self._init_error: Exception | None = None
+        try:
+            from pygooglenews import GoogleNews  # type: ignore[import-not-found]
+
+            self._client = GoogleNews(lang=lang, country=country)
+        except Exception as exc:  # noqa: BLE001
+            self._init_error = exc
 
     async def get_company_profile(self, symbol: str) -> dict[str, Any]:
         raise DataUnavailable("Company profile is not available from Google News")
@@ -29,6 +34,9 @@ class GoogleNewsProvider(BaseProvider):
         raise DataUnavailable("Insider transactions are not available from Google News")
 
     async def get_news(self, symbol: str, limit: int = 20) -> list[dict[str, Any]]:
+        if self._client is None:
+            raise DataUnavailable(f"Google News provider unavailable: {self._init_error}")
+
         def load() -> list[dict[str, Any]]:
             response = self._client.search(symbol)
             entries = response.get("entries", []) if isinstance(response, dict) else []
