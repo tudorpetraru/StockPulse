@@ -125,16 +125,16 @@ run.py
 Use the same project-local virtual environment for all terminals/agents.
 
 ```bash
-cd /Users/tudor/Documents/AI/fintech/StockPulse
-PYTHON_BIN=/opt/homebrew/bin/python3.11 ./scripts/bootstrap_env.sh
+cd <project-root>/StockPulse
+PYTHON_BIN=python3.11 ./scripts/bootstrap_env.sh
 source .venv/bin/activate
 ./scripts/check_env.sh
 ```
 
-If `/opt/homebrew/bin/python3.11` is not available:
+If `python3.11` is not available in PATH:
 
 ```bash
-PYTHON_BIN=python3.11 ./scripts/bootstrap_env.sh
+PYTHON_BIN=python3 ./scripts/bootstrap_env.sh
 ```
 
 The bootstrap script recreates `.venv` automatically if Python minor version changes.
@@ -153,7 +153,7 @@ Default DB path is `data/stockpulse.db` (configurable via `DB_PATH`).
 ## Launch the App
 
 ```bash
-cd /Users/tudor/Documents/AI/fintech/StockPulse
+cd <project-root>/StockPulse
 source .venv/bin/activate
 python run.py
 ```
