@@ -247,6 +247,32 @@ body {
   opacity: 0.4;
 }
 
+/* Legacy table class used across ticker/screener partials */
+.wf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.wf-table th {
+  background: var(--bg-subtle);
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--border);
+}
+
+.wf-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--bg-subtle);
+}
+
+.wf-table tr:hover td {
+  background: var(--bg-hover);
+}
+
 /* ═══ Buttons ═══ */
 .btn {
   display: inline-flex;
@@ -331,6 +357,24 @@ body {
 }
 
 .sp-input-error { border-color: var(--negative); }
+
+/* Legacy input class used across screener/ticker partials */
+.wf-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  outline: none;
+  font-family: var(--font);
+}
+
+.wf-input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(25,118,210,0.1);
+}
 
 .sp-select {
   border: 1px solid var(--border);
@@ -423,6 +467,140 @@ body {
 }
 
 .news-meta .source { font-weight: 600; }
+
+/* ═══ Ticker page ═══ */
+.company-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-lg);
+}
+
+.company-name {
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1.1;
+}
+
+.company-symbol {
+  color: var(--text-secondary);
+  font-size: 28px;
+  margin-left: var(--space-sm);
+  font-weight: 600;
+}
+
+.company-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: var(--space-xs);
+}
+
+.company-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.company-price {
+  text-align: right;
+  min-width: 220px;
+}
+
+.price {
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1;
+}
+
+.change {
+  margin-top: var(--space-xs);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+}
+
+.ticker-tabs {
+  margin-top: var(--space-lg);
+}
+
+.analyst-consensus-header {
+  margin-bottom: var(--space-md);
+}
+
+.consensus-rating {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.consensus-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.target-prices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.target {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  padding: var(--space-sm);
+  text-align: center;
+}
+
+.target-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.target-label {
+  margin-top: 2px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+}
+
+/* ═══ Screener ═══ */
+.filter-group {
+  margin-bottom: var(--space-md);
+}
+
+.filter-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-xs);
+}
+
+.range-inputs {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: var(--space-xs);
+  align-items: center;
+}
+
+.range-inputs span {
+  color: var(--text-muted);
+  font-weight: 700;
+  text-align: center;
+}
 
 /* ═══ Financial color helpers ═══ */
 .positive { color: var(--positive); }
@@ -739,6 +917,31 @@ body {
 
 .compact-table {
   font-size: 12px;
+}
+
+@media (max-width: 1200px) {
+  .metrics-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .company-header {
+    flex-direction: column;
+  }
+
+  .company-price {
+    text-align: left;
+    min-width: 0;
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .target-prices {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ═══ Accessibility ═══ */

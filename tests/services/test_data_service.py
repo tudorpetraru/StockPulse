@@ -4,7 +4,13 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from app.services.data_service import DataService, _clip_near_zero, _fmt_market_cap, _to_float
+from app.services.data_service import (
+    DataService,
+    _clip_near_zero,
+    _display_column_label,
+    _fmt_market_cap,
+    _to_float,
+)
 
 
 class _DummyCache:
@@ -37,6 +43,10 @@ class _DummyProvider:
     async def get_key_metrics(self, symbol: str) -> dict[str, Any]:
         _ = symbol
         return self.metrics
+
+    async def get_insider_transactions(self, symbol: str) -> list[dict[str, Any]]:
+        _ = symbol
+        return []
 
 
 def test_get_news_maps_title_link_and_dict_source():
@@ -85,3 +95,34 @@ def test_get_metrics_converts_nan_to_na():
     metrics = asyncio.run(service.get_metrics("NVDA"))
     assert metrics["pe"] == "N/A"
     assert metrics["mkt_cap"] == "4.54T"
+
+
+def test_display_column_label_strips_midnight_suffix():
+    assert _display_column_label("2025-10-31 00:00:00") == "2025-10-31"
+
+
+def test_get_insider_trades_maps_finviz_fields():
+    cache = _DummyCache()
+
+    class _InsiderProvider(_DummyProvider):
+        async def get_insider_transactions(self, symbol: str) -> list[dict[str, Any]]:
+            _ = symbol
+            return [
+                {
+                    "Date": "Feb 04 '26",
+                    "Insider Trading": "Kress Colette",
+                    "Relationship": "EVP & Chief Financial Officer",
+                    "Transaction": "Sale",
+                    "#Shares": 27640.0,
+                    "Value ($)": 4856861.0,
+                }
+            ]
+
+    finviz = _InsiderProvider()
+    yfinance = _DummyProvider()
+    service = DataService(cache=cache, yfinance_provider=yfinance, finviz_provider=finviz)
+    rows = asyncio.run(service.get_insider_trades("NVDA"))
+    assert rows[0]["name"] == "Kress Colette"
+    assert rows[0]["title"] == "EVP & Chief Financial Officer"
+    assert rows[0]["shares"] == 27640.0
+    assert rows[0]["value"] == 4856861.0

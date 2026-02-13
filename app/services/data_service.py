@@ -321,13 +321,13 @@ class DataService:
         for row in rows[:50]:
             if not isinstance(row, dict):
                 continue
-            shares = _to_float(_first(row, "Shares", "Shares Traded", "shares", "Qty"))
-            value = _to_float(_first(row, "Value", "value", "Transaction Value"))
+            shares = _to_float(_first(row, "Shares", "Shares Traded", "#Shares", "shares", "Qty"))
+            value = _to_float(_first(row, "Value", "Value ($)", "value", "Transaction Value"))
             result.append(
                 {
                     "date": _as_str(_first(row, "Date", "date")) or "N/A",
-                    "name": _as_str(_first(row, "Insider", "Name", "name")) or "N/A",
-                    "title": _as_str(_first(row, "Title", "title")) or "N/A",
+                    "name": _as_str(_first(row, "Insider", "Insider Trading", "Name", "name")) or "N/A",
+                    "title": _as_str(_first(row, "Title", "Relationship", "title")) or "N/A",
                     "type": _as_str(_first(row, "Transaction", "Type", "action", "type")) or "N/A",
                     "shares": shares,
                     "value": value,
@@ -683,8 +683,21 @@ def _extract_columns(groups: list[list[dict[str, Any]]]) -> list[str]:
         first_row = rows[0]
         keys = [k for k in first_row.keys() if k not in {"index", "Breakdown", ""}]
         if keys:
-            return keys[:4]
+            return [_display_column_label(k) for k in keys[:4]]
     return []
+
+
+def _display_column_label(value: Any) -> str:
+    text = _as_str(value).strip()
+    if not text:
+        return "N/A"
+    date_prefix = re.match(r"^(\d{4}-\d{2}-\d{2})", text)
+    if date_prefix:
+        return date_prefix.group(1)
+    parsed = _parse_datetime(text)
+    if parsed is not None:
+        return parsed.date().isoformat()
+    return text.split(" ")[0] if " " in text and ":" in text else text
 
 
 def _normalize_financial_rows(rows: list[dict[str, Any]], columns: list[str]) -> list[dict[str, Any]]:
