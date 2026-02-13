@@ -13,15 +13,19 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.models.db_models import Portfolio, Position, Watchlist, WatchlistItem
 
 # ── Shared in-memory DB for Agent C tests ──
+# StaticPool ensures every session uses the same underlying connection,
+# so all sessions see the same tables and data.
 
 _test_engine = create_engine(
     "sqlite:///:memory:",
     connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
 )
 _TestSession = sessionmaker(bind=_test_engine, autoflush=False, autocommit=False, expire_on_commit=False)
 
