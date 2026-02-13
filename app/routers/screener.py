@@ -7,43 +7,20 @@ import csv
 import io
 import json
 import logging
-from pathlib import Path
 from typing import Any
-from uuid import uuid4
 
-from fastapi import APIRouter, Depends, Form, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.dependencies import get_data_service
+from app.models.db_models import ScreenerPreset
+from app.services.data_service import DataService
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-# ── Agent-A interface (stubbed) ───────────────────────────────────────────
-# Use a standalone stub so we don't depend on Agent A's DataService constructor.
-
-class _DataServiceStub:
-    """Minimal stub until Agent A's DataService is wired in."""
-    async def screen_stocks(self, filters: dict[str, Any]) -> list[dict[str, Any]]:
-        return []
-
-
-def _get_data_service() -> _DataServiceStub:
-    return _DataServiceStub()
-
-
-# ── Presets storage (JSON file until Agent A provides DB layer) ───────────
-
-_PRESETS_PATH = Path("data/screener_presets.json")
-
-
-def _load_presets() -> list[dict[str, Any]]:
-    if _PRESETS_PATH.exists():
-        return json.loads(_PRESETS_PATH.read_text())
-    return []
-
-
-def _save_presets(presets: list[dict[str, Any]]) -> None:
-    _PRESETS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _PRESETS_PATH.write_text(json.dumps(presets, indent=2))
 
 
 # ── Jinja2 ────────────────────────────────────────────────────────────────
@@ -95,8 +72,9 @@ def _sort_results(
     if sort_by not in _SORTABLE_COLS:
         sort_by = "mkt_cap"
     reverse = sort_dir == "desc"
+    key_name = "mkt_cap_num" if sort_by == "mkt_cap" else sort_by
     try:
-        return sorted(results, key=lambda r: (r.get(sort_by) is None, r.get(sort_by, 0)), reverse=reverse)
+        return sorted(results, key=lambda r: (r.get(key_name) is None, r.get(key_name, 0)), reverse=reverse)
     except TypeError:
         return results
 
@@ -115,9 +93,9 @@ def _paginate(
 # ── Routes ────────────────────────────────────────────────────────────────
 
 @router.get("/screener", response_class=HTMLResponse)
-async def screener_page(request: Request):
+async def screener_page(request: Request, db: Session = Depends(get_db)):
     templates = _templates()
-    presets = _load_presets()
+    presets = _list_presets(db)
     return templates.TemplateResponse("screener.html", {
         "request": request,
         "presets": presets,
@@ -131,7 +109,7 @@ async def hx_screener_results(
     sort_dir: str = Query("desc"),
     page: int = Query(1, ge=1),
     per_page: int = Query(_DEFAULT_PER_PAGE, ge=5, le=100),
-    ds: DataService = Depends(_get_data_service),
+    ds: DataService = Depends(get_data_service),
 ):
     templates = _templates()
     form = await request.form()
@@ -165,7 +143,7 @@ async def hx_screener_results(
 @router.post("/api/screener/export")
 async def screener_export(
     request: Request,
-    ds: DataService = Depends(_get_data_service),
+    ds: DataService = Depends(get_data_service),
 ):
     form = await request.form()
     filters = _extract_filters(dict(form))
@@ -194,29 +172,56 @@ async def screener_export(
 # ── Preset CRUD ───────────────────────────────────────────────────────────
 
 @router.get("/api/screener/presets")
-async def list_presets():
-    return JSONResponse(content=_load_presets())
+async def list_presets(db: Session = Depends(get_db)):
+    return JSONResponse(content=_list_presets(db))
 
 
 @router.post("/api/screener/presets")
-async def save_preset(request: Request):
+async def save_preset(request: Request, db: Session = Depends(get_db)):
     body = await request.json()
-    name = body.get("name", "Untitled")
+    name = (body.get("name") or "Untitled").strip()[:120]
     filters = body.get("filters", {})
-    presets = _load_presets()
-    preset = {
-        "id": str(uuid4()),
-        "name": name,
-        "filters": filters,
-    }
-    presets.append(preset)
-    _save_presets(presets)
-    return JSONResponse(content=preset, status_code=201)
+    filters_json = json.dumps(filters)
+
+    existing = db.query(ScreenerPreset).filter(ScreenerPreset.name == name).first()
+    if existing:
+        existing.filters = filters_json
+        db.commit()
+        db.refresh(existing)
+        return JSONResponse(content=_serialize_preset(existing), status_code=200)
+
+    preset = ScreenerPreset(name=name, filters=filters_json)
+    db.add(preset)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        return JSONResponse(content={"error": "Preset name already exists"}, status_code=409)
+    db.refresh(preset)
+    return JSONResponse(content=_serialize_preset(preset), status_code=201)
 
 
 @router.delete("/api/screener/presets/{preset_id}")
-async def delete_preset(preset_id: str):
-    presets = _load_presets()
-    presets = [p for p in presets if p["id"] != preset_id]
-    _save_presets(presets)
+async def delete_preset(preset_id: str, db: Session = Depends(get_db)):
+    preset = None
+    if preset_id.isdigit():
+        preset = db.get(ScreenerPreset, int(preset_id))
+    if preset is None:
+        preset = db.query(ScreenerPreset).filter(ScreenerPreset.name == preset_id).first()
+    if preset:
+        db.delete(preset)
+        db.commit()
     return JSONResponse(content={"ok": True})
+
+
+def _serialize_preset(preset: ScreenerPreset) -> dict[str, Any]:
+    try:
+        filters = json.loads(preset.filters)
+    except json.JSONDecodeError:
+        filters = {}
+    return {"id": preset.id, "name": preset.name, "filters": filters}
+
+
+def _list_presets(db: Session) -> list[dict[str, Any]]:
+    rows = db.query(ScreenerPreset).order_by(ScreenerPreset.created_at.desc()).all()
+    return [_serialize_preset(p) for p in rows]

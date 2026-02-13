@@ -56,6 +56,11 @@ def _override_get_db():
         session.close()
 
 
+class _TestDataService:
+    async def screen_stocks(self, filters):  # noqa: D401
+        return []
+
+
 def _mount_static(app: FastAPI) -> None:
     static_dir = os.path.join(os.path.dirname(__file__), "..", "app", "static")
     if os.path.isdir(static_dir):
@@ -88,6 +93,7 @@ def client():
     test_app.include_router(watchlist_router)
     test_app.include_router(news_router)
     test_app.dependency_overrides[get_db] = _override_get_db
+    test_app.state.data_service = _TestDataService()
 
     with TestClient(test_app) as c:
         yield c
