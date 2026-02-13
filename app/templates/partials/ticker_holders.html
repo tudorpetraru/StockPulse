@@ -3,7 +3,7 @@
 <div class="alert alert-error">❌ Holder data temporarily unavailable. <a hx-get="/hx/ticker/{{ symbol }}/holders"
         hx-target="#tab-content" hx-swap="innerHTML">Click to retry.</a></div>
 {% else %}
-{% macro holders_table(title, rows) %}
+{% macro holders_table(title, rows, symbol) %}
 <div class="card">
     <div class="card-title">{{ title }}</div>
     {% if rows %}
@@ -12,9 +12,9 @@
             <tr>
                 <th>Holder</th>
                 <th>Shares</th>
-                <th>% In (of AAPL shares)</th>
+                <th>% In (of {{ symbol }} shares)</th>
                 <th>Change vs Prev Filing</th>
-                <th>AAPL Position Value</th>
+                <th>{{ symbol }} Position Value</th>
                 <th>Date</th>
             </tr>
         </thead>
@@ -38,7 +38,7 @@
         </tbody>
     </table>
     <p style="color:var(--gray-500);font-size:12px;margin:10px 0 0;">
-        <strong>Note:</strong> % In is each holder's share of AAPL shares outstanding. Change is filing-to-filing position change (13F periods), not monthly trade flow. This table does not include each fund's full portfolio weight in AAPL.
+        <strong>Note:</strong> % In is each holder's share of {{ symbol }} shares outstanding. Change is filing-to-filing position change (13F periods), not monthly trade flow. This table does not include each fund's full portfolio weight in {{ symbol }}.
     </p>
     {% else %}
     <p style="color:var(--gray-500);font-size:13px;">No data available.</p>
@@ -46,6 +46,6 @@
 </div>
 {% endmacro %}
 
-{{ holders_table("Top Institutional Holders", holders.institutional) }}
-{{ holders_table("Top Mutual Fund Holders", holders.mutual_fund) }}
+{{ holders_table("Top Institutional Holders", holders.institutional, symbol) }}
+{{ holders_table("Top Mutual Fund Holders", holders.mutual_fund, symbol) }}
 {% endif %}

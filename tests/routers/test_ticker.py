@@ -87,6 +87,30 @@ class TestTickerPartials:
         assert "25.00%" in response.text
         assert "75.00%" in response.text
 
+    def test_hx_holders_uses_requested_symbol_in_headers(self, client):
+        async def _fake_holders(symbol: str):
+            _ = symbol
+            return {
+                "institutional": [
+                    {
+                        "name": "Fund X",
+                        "shares": 1.0,
+                        "pct_in": 0.1,
+                        "pct_change": 0.01,
+                        "value": 1000.0,
+                        "date": "2025-12-31",
+                    }
+                ],
+                "mutual_fund": [],
+            }
+
+        client.app.state.data_service.get_holders = _fake_holders
+        response = client.get("/hx/ticker/NVDA/holders")
+        assert response.status_code == 200
+        assert "% In (of NVDA shares)" in response.text
+        assert "NVDA Position Value" in response.text
+        assert "AAPL Position Value" not in response.text
+
     def test_hx_earnings_200(self, client):
         self._assert_partial(client, "/hx/ticker/AAPL/earnings")
 
