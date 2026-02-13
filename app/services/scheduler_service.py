@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import SessionLocal
+from app.errors import SERVICE_RECOVERABLE_ERRORS
 from app.services.prediction_service import PredictionSnapshotService, refresh_tracked_prices
 from app.services.providers.yfinance_provider import YFinanceProvider
 
@@ -93,7 +94,7 @@ class SchedulerService:
             try:
                 result = await job(db)
                 logger.info("Scheduler job %s result=%s", job.__name__, result)
-            except Exception as exc:  # noqa: BLE001
+            except SERVICE_RECOVERABLE_ERRORS as exc:
                 db.rollback()
                 logger.exception("Scheduler job %s failed: %s", job.__name__, exc)
             finally:

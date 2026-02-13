@@ -21,6 +21,7 @@
     <div class="card" style="padding:16px;">
         <form id="screener-form" hx-post="/hx/screener/results" hx-target="#screener-results" hx-swap="innerHTML"
             hx-trigger="submit, change from:.auto-submit delay:300ms">
+            <input type="hidden" name="csrf_token" value="">
 
             <h3 style="font-size:14px;color:var(--navy);margin-bottom:12px;">Valuation</h3>
             <div class="filter-group">
@@ -158,7 +159,10 @@
         fd.forEach((v, k) => { if (v) filters[k] = v; });
         fetch('/api/screener/presets', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'x-csrf-token': getCsrfToken(),
+            },
             body: JSON.stringify({ name, filters })
         }).then(r => r.json()).then(p => {
             const sel = document.getElementById('preset-select');
@@ -173,7 +177,11 @@
     function exportCSV() {
         const form = document.getElementById('screener-form');
         const fd = new FormData(form);
-        fetch('/api/screener/export', { method: 'POST', body: fd })
+        fetch('/api/screener/export', {
+            method: 'POST',
+            headers: { 'x-csrf-token': getCsrfToken() },
+            body: fd
+        })
             .then(r => r.blob())
             .then(blob => {
                 const a = document.createElement('a');

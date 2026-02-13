@@ -123,8 +123,8 @@ def portfolio_table(
 @router.post("/api/portfolios", response_class=HTMLResponse)
 def create_portfolio(
     request: Request,
-    name: str = Form(...),
-    description: str = Form(""),
+    name: str = Form(..., max_length=200),
+    description: str = Form("", max_length=2000),
     db: Session = Depends(get_db),
 ):
     portfolio = Portfolio(name=name, description=description or None)
@@ -152,11 +152,11 @@ def delete_portfolio(portfolio_id: int, db: Session = Depends(get_db)):
 def add_position(
     request: Request,
     portfolio_id: int = Form(...),
-    ticker: str = Form(...),
-    shares: float = Form(...),
-    avg_cost: float = Form(...),
+    ticker: str = Form(..., max_length=20, pattern=r"^\s*[A-Za-z0-9.\-]{1,10}\s*$"),
+    shares: float = Form(..., gt=0, le=1e9),
+    avg_cost: float = Form(..., ge=0, le=1e9),
     date_acquired: str = Form(""),
-    notes: str = Form(""),
+    notes: str = Form("", max_length=2000),
     db: Session = Depends(get_db),
 ):
     acquired = None
@@ -188,11 +188,11 @@ def add_position(
 def update_position(
     request: Request,
     position_id: int,
-    ticker: str = Form(...),
-    shares: float = Form(...),
-    avg_cost: float = Form(...),
+    ticker: str = Form(..., max_length=20, pattern=r"^\s*[A-Za-z0-9.\-]{1,10}\s*$"),
+    shares: float = Form(..., gt=0, le=1e9),
+    avg_cost: float = Form(..., ge=0, le=1e9),
     date_acquired: str = Form(""),
-    notes: str = Form(""),
+    notes: str = Form("", max_length=2000),
     db: Session = Depends(get_db),
 ):
     position = db.get(Position, position_id)

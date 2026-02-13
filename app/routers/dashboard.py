@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_data_service, get_prediction_service
+from app.errors import SERVICE_RECOVERABLE_ERRORS
 from app.models.db_models import AnalystSnapshot, ConsensusSnapshot, Portfolio, Position, WatchlistItem
 from app.services.data_service import DataService
 from app.services.prediction_service import PredictionService
@@ -123,7 +124,7 @@ async def _watchlist_movers(db: Session, ds: DataService) -> list[dict]:
         try:
             latest, _, change_pct = await _price_metrics(ds, symbol)
             movers.append({"ticker": symbol, "price": latest, "change_pct": change_pct})
-        except Exception as exc:  # noqa: BLE001
+        except SERVICE_RECOVERABLE_ERRORS as exc:
             logger.warning("Watchlist mover lookup failed for %s: %s", symbol, exc)
             movers.append({"ticker": symbol, "price": 0.0, "change_pct": 0.0})
     return sorted(movers, key=lambda row: abs(float(row.get("change_pct", 0.0))), reverse=True)[:6]
@@ -175,7 +176,7 @@ async def _market_snapshot(ds: DataService) -> list[dict]:
         try:
             last_price, _, change_pct = await _price_metrics(ds, symbol)
             rows.append({"name": name, "symbol": symbol, "value": last_price, "change_pct": change_pct})
-        except Exception as exc:  # noqa: BLE001
+        except SERVICE_RECOVERABLE_ERRORS as exc:
             logger.warning("Market snapshot lookup failed for %s: %s", symbol, exc)
             rows.append({"name": name, "symbol": symbol, "value": 0, "change_pct": 0})
     return rows

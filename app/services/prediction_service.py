@@ -10,6 +10,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
+from app.errors import SERVICE_RECOVERABLE_ERRORS
 from app.models.db_models import AnalystScore, AnalystSnapshot, ConsensusSnapshot
 from app.repositories.prediction_repository import PredictionRepository
 from app.services.providers.finviz_provider import FinvizProvider
@@ -47,7 +48,7 @@ class PredictionSnapshotService:
                 await self._snapshot_analyst_ratings(db, ticker, snapshot_date)
                 await self._snapshot_consensus(db, ticker, snapshot_date)
                 ok += 1
-            except Exception as exc:  # noqa: BLE001
+            except SERVICE_RECOVERABLE_ERRORS as exc:
                 failed += 1
                 logger.warning("Snapshot failed for %s: %s", ticker, exc)
                 db.rollback()
@@ -444,7 +445,7 @@ class PredictionService:
                 profile_sector = str(profile.get("sector") or "").strip()
                 if profile_sector:
                     ticker_sectors[ticker] = profile_sector.lower()
-            except Exception:  # noqa: BLE001
+            except SERVICE_RECOVERABLE_ERRORS:
                 continue
         return [row for row in rows if row.ticker and ticker_sectors.get(row.ticker.upper()) == target]
 
@@ -610,7 +611,7 @@ async def refresh_tracked_prices(
         try:
             await yfinance_provider.get_current_price(ticker)
             refreshed += 1
-        except Exception:  # noqa: BLE001
+        except SERVICE_RECOVERABLE_ERRORS:
             failed += 1
     return {"tickers": len(tickers), "refreshed": refreshed, "failed": failed}
 

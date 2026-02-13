@@ -15,7 +15,7 @@ class GoogleNewsProvider(BaseProvider):
             from pygooglenews import GoogleNews  # type: ignore[import-not-found]
 
             self._client = GoogleNews(lang=lang, country=country)
-        except Exception as exc:  # noqa: BLE001
+        except (ImportError, ModuleNotFoundError, AttributeError, TypeError, ValueError, RuntimeError) as exc:
             self._init_error = exc
 
     async def get_company_profile(self, symbol: str) -> dict[str, Any]:

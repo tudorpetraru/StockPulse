@@ -11,3 +11,4 @@ yfinance>=0.2.54,<1.0
 finvizfinance>=1.2.0,<2.0
 pygooglenews>=0.1.2,<0.2
 tvscreener>=0.2.0,<1.0
+slowapi>=0.1.9,<1.0

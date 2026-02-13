@@ -15,6 +15,8 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.dependencies import get_prediction_service
+from app.errors import ROUTE_RECOVERABLE_ERRORS
+from app.middleware.rate_limit import limiter
 from app.services.prediction_service import PredictionService
 
 logger = logging.getLogger(__name__)
@@ -36,7 +38,7 @@ async def prediction_analysts(
     symbol = symbol.upper()
     try:
         data = await ps.get_analyst_scorecard(symbol)
-    except Exception:
+    except ROUTE_RECOVERABLE_ERRORS:
         logger.exception("prediction_analysts error %s", symbol)
         data = []
     return JSONResponse(content=data)
@@ -51,7 +53,7 @@ async def prediction_consensus_history(
     symbol = symbol.upper()
     try:
         data = await ps.get_consensus_history(symbol)
-    except Exception:
+    except ROUTE_RECOVERABLE_ERRORS:
         logger.exception("consensus_history error %s", symbol)
         data = []
     return JSONResponse(content=data)
@@ -66,7 +68,7 @@ async def prediction_top_analysts(
     """Global analyst leaderboard. Optional sector/symbol filters."""
     try:
         data = await ps.get_top_analysts(sector=sector, symbol=symbol)
-    except Exception:
+    except ROUTE_RECOVERABLE_ERRORS:
         logger.exception("top_analysts error")
         data = []
     return JSONResponse(content=data)
@@ -82,20 +84,23 @@ async def prediction_firm_history(
     symbol = symbol.upper()
     try:
         data = await ps.get_firm_history(symbol, firm)
-    except Exception:
+    except ROUTE_RECOVERABLE_ERRORS:
         logger.exception("firm_history error %s %s", symbol, firm)
         data = []
     return JSONResponse(content=data)
 
 
 @router.post("/api/predictions/snapshot/run")
+@limiter.limit("2/minute")
 async def prediction_snapshot_run(
+    request: Request,
     ps: PredictionService = Depends(get_prediction_service),
 ):
     """Trigger a manual prediction snapshot run."""
+    _ = request
     try:
         result = await ps.run_snapshot()
-    except Exception:
+    except ROUTE_RECOVERABLE_ERRORS:
         logger.exception("snapshot_run error")
         result = {"status": "error", "message": "Snapshot run failed"}
     return JSONResponse(content=result)
@@ -113,7 +118,7 @@ async def analysts_page(
     templates = _templates()
     try:
         leaderboard = await ps.get_top_analysts(sector=sector, symbol=symbol)
-    except Exception:
+    except ROUTE_RECOVERABLE_ERRORS:
         logger.exception("analysts_page error")
         leaderboard = []
 

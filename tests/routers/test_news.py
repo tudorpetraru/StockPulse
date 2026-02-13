@@ -37,3 +37,8 @@ def test_news_empty_state_message(client):
     response = client.get("/hx/news/feed?filter=all")
     assert response.status_code == 200
     assert b"No news available" in response.content or b"news" in response.content.lower()
+
+
+def test_news_query_too_long(client):
+    response = client.get("/news?filter=custom&q=" + ("x" * 700))
+    assert response.status_code == 422

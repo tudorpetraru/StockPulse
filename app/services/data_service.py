@@ -9,6 +9,7 @@ from typing import Any
 
 from finvizfinance.screener.overview import Overview
 
+from app.errors import SERVICE_RECOVERABLE_ERRORS
 from app.models.schemas import DataPanelResult, PartialDataResult
 from app.services.cache_service import CacheService, ttl_for
 from app.services.providers.base import DataProviderError
@@ -61,14 +62,14 @@ class DataService:
             data = await self._run_with_retry(primary)
             self.cache.set(cache_key, data, ttl_for(cache_category))
             return DataPanelResult(status="ok", data=data)
-        except Exception as primary_exc:  # noqa: BLE001
+        except SERVICE_RECOVERABLE_ERRORS as primary_exc:
             logger.warning("Primary provider failed for %s: %s", cache_key, primary_exc)
             if fallback is not None:
                 try:
                     data = await self._run_with_retry(fallback)
                     self.cache.set(cache_key, data, ttl_for(cache_category))
                     return DataPanelResult(status="stale", data=data, message="Using fallback provider")
-                except Exception as fallback_exc:  # noqa: BLE001
+                except SERVICE_RECOVERABLE_ERRORS as fallback_exc:
                     logger.warning("Fallback provider failed for %s: %s", cache_key, fallback_exc)
             stale = self.cache.get(cache_key)
             if stale is not None:
@@ -396,7 +397,7 @@ class DataService:
             if sector and sector != "N/A":
                 try:
                     overview.set_filter(filters_dict={"Sector": sector})
-                except Exception:  # noqa: BLE001
+                except (ValueError, TypeError, KeyError):
                     logger.debug("Unable to filter peers by sector=%s", sector)
 
             df = overview.screener_view(order="Market Cap.", limit=40, verbose=0, ascend=False, sleep_sec=0)
@@ -425,7 +426,7 @@ class DataService:
 
         try:
             peers = await asyncio.to_thread(_run)
-        except Exception as exc:  # noqa: BLE001
+        except SERVICE_RECOVERABLE_ERRORS as exc:
             logger.warning("Peers lookup failed for %s: %s", upper_symbol, exc)
             peers = []
 
@@ -468,7 +469,7 @@ class DataService:
 
         try:
             rows = await asyncio.to_thread(_run)
-        except Exception as exc:  # noqa: BLE001
+        except SERVICE_RECOVERABLE_ERRORS as exc:
             logger.warning("Screener query failed: %s", exc)
             rows = []
 

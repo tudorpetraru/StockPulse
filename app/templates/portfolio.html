@@ -17,6 +17,7 @@
     <div x-data="{ open: false }">
       <a class="sidebar-item" style="color:var(--blue); font-size:12px; cursor:pointer;" @click="open = !open">+ New Portfolio</a>
       <form x-show="open" action="/api/portfolios" method="post" style="padding:8px 12px;">
+        <input type="hidden" name="csrf_token" value="">
         <input class="sp-input" name="name" placeholder="Portfolio name" required style="width:100%; margin-bottom:8px;">
         <button type="submit" class="btn btn-primary btn-sm" style="width:100%;">Create</button>
       </form>
@@ -99,6 +100,7 @@
           hx-target="#positions-table"
           hx-swap="innerHTML"
           hx-on::after-request="closeModal('add-position-modal')">
+      <input type="hidden" name="csrf_token" value="">
       <input type="hidden" name="portfolio_id" value="{{ active_portfolio.id }}">
       <div class="form-group">
         <label for="ticker">Ticker Symbol</label>

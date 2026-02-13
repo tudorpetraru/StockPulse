@@ -67,6 +67,43 @@
   </div>
 
   <script src="/static/js/app.js"></script>
+  <script>
+    function getCsrfToken() {
+      const pair = document.cookie.split('; ').find(c => c.startsWith('csrf_token='));
+      return pair ? decodeURIComponent(pair.split('=')[1]) : '';
+    }
+
+    function injectCsrfTokens(root) {
+      const scope = root || document;
+      scope.querySelectorAll('form').forEach((form) => {
+        const method = (form.getAttribute('method') || '').toLowerCase();
+        if (method === 'get') return;
+        let input = form.querySelector('input[name="csrf_token"]');
+        if (!input) {
+          input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'csrf_token';
+          form.appendChild(input);
+        }
+        input.value = getCsrfToken();
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      injectCsrfTokens(document);
+    });
+
+    document.body.addEventListener('htmx:afterSwap', function (evt) {
+      injectCsrfTokens(evt.target);
+    });
+
+    document.addEventListener('htmx:configRequest', function (evt) {
+      const token = getCsrfToken();
+      if (token) {
+        evt.detail.headers['x-csrf-token'] = token;
+      }
+    });
+  </script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

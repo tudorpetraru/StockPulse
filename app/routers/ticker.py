@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.dependencies import get_data_service, get_prediction_service
+from app.errors import ROUTE_RECOVERABLE_ERRORS
 from app.services.chart_service import build_price_chart, build_consensus_chart
 from app.services.data_service import DataService
 from app.services.prediction_service import PredictionService
@@ -42,7 +43,7 @@ async def ticker_page(
         analysts = await ds.get_analyst_ratings(symbol)
         peers = await ds.get_peers(symbol)
         history = await ds.get_price_history(symbol, period="1y")
-    except Exception:
+    except ROUTE_RECOVERABLE_ERRORS:
         logger.exception("Error fetching ticker data for %s", symbol)
         profile = {"name": symbol, "symbol": symbol, "sector": "N/A",
                     "industry": "N/A", "exchange": "N/A", "description": ""}
@@ -84,7 +85,7 @@ async def hx_financials(
     try:
         data = await ds.get_financials(symbol, period)
         status = "ok"
-    except Exception:
+    except ROUTE_RECOVERABLE_ERRORS:
         logger.exception("financials error %s", symbol)
         data = {"income": [], "balance": [], "cashflow": []}
         status = "error"
@@ -104,7 +105,7 @@ async def hx_analysts(
     try:
         data = await ds.get_analyst_ratings(symbol)
         status = "ok"
-    except Exception:
+    except ROUTE_RECOVERABLE_ERRORS:
         logger.exception("analysts error %s", symbol)
         data = {"consensus": "N/A", "count": 0, "low": "N/A",
                  "avg": "N/A", "high": "N/A", "ratings": []}
@@ -124,7 +125,7 @@ async def hx_news(
     try:
         items = await ds.get_news(symbol)
         status = "ok"
-    except Exception:
+    except ROUTE_RECOVERABLE_ERRORS:
         logger.exception("news error %s", symbol)
         items = []
         status = "error"
@@ -143,7 +144,7 @@ async def hx_insiders(
     try:
         trades = await ds.get_insider_trades(symbol)
         status = "ok"
-    except Exception:
+    except ROUTE_RECOVERABLE_ERRORS:
         logger.exception("insiders error %s", symbol)
         trades = []
         status = "error"
@@ -162,7 +163,7 @@ async def hx_holders(
     try:
         data = await ds.get_holders(symbol)
         status = "ok"
-    except Exception:
+    except ROUTE_RECOVERABLE_ERRORS:
         logger.exception("holders error %s", symbol)
         data = {"institutional": [], "mutual_fund": []}
         status = "error"
@@ -181,7 +182,7 @@ async def hx_earnings(
     try:
         data = await ds.get_earnings(symbol)
         status = "ok"
-    except Exception:
+    except ROUTE_RECOVERABLE_ERRORS:
         logger.exception("earnings error %s", symbol)
         data = {"history": [], "next_date": "N/A"}
         status = "error"
@@ -202,7 +203,7 @@ async def hx_predictions(
         scorecard = await ps.get_analyst_scorecard(symbol)
         history = await ps.get_prediction_history(symbol)
         status = "ok"
-    except Exception:
+    except ROUTE_RECOVERABLE_ERRORS:
         logger.exception("predictions error %s", symbol)
         summary = {"active": 0, "resolved": 0, "accuracy": None, "consensus_target": "N/A"}
         scorecard = []
@@ -230,7 +231,7 @@ async def chart_price(
     yf_period = yfinance_period(period)
     try:
         history = await ds.get_price_history(symbol, period=yf_period)
-    except Exception:
+    except ROUTE_RECOVERABLE_ERRORS:
         history = []
     chart = build_price_chart(history, symbol, period)
     return JSONResponse(content=chart)
@@ -246,7 +247,7 @@ async def chart_consensus(
     try:
         prices = await ds.get_price_history(symbol, period="2y")
         snapshots = await ps.get_consensus_history(symbol)
-    except Exception:
+    except ROUTE_RECOVERABLE_ERRORS:
         prices, snapshots = [], []
     chart = build_consensus_chart(
         [{"date": p["date"], "close": p["close"]} for p in prices],

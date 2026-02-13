@@ -6,6 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    environment: str = Field(default="development", alias="ENVIRONMENT")
     host: str = Field(default="127.0.0.1", alias="HOST")
     port: int = Field(default=8000, alias="PORT")
     db_path: Path = Field(default=Path("data/stockpulse.db"), alias="DB_PATH")

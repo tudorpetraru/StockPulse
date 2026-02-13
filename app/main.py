@@ -5,9 +5,16 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.config import get_settings
 from app.database import Base, engine
+from app.middleware.csrf import CSRFMiddleware
+from app.middleware.error_handler import generic_exception_handler
+from app.middleware.rate_limit import limiter
+from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.routers import (
     dashboard_router,
     news_router,
@@ -74,6 +81,12 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="StockPulse", version="1.0.0", lifespan=lifespan)
+app.add_middleware(CSRFMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(SlowAPIMiddleware)
+app.add_exception_handler(Exception, generic_exception_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.state.limiter = limiter
 
 # Static files (CSS, JS) — Agent C
 app.mount("/static", StaticFiles(directory="app/static"), name="static")

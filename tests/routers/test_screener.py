@@ -1,6 +1,8 @@
 """Tests for the screener router – page, results, sort, pagination, CSV, presets."""
 from __future__ import annotations
 
+import csv
+import io
 import json
 
 
@@ -39,6 +41,32 @@ class TestScreenerCSV:
         assert resp.status_code == 200
         assert "text/csv" in resp.headers.get("content-type", "")
 
+    def test_csv_injection_escaped(self, client):
+        async def fake_screen_stocks(filters):
+            _ = filters
+            return [
+                {
+                    "ticker": "SAFE",
+                    "company": "=CMD()",
+                    "price": "1",
+                    "change_pct": "0",
+                    "mkt_cap": "1B",
+                    "pe": "10",
+                    "eps": "1.2",
+                    "volume": "1000",
+                }
+            ]
+
+        client.app.state.data_service.screen_stocks = fake_screen_stocks
+        response = client.post("/api/screener/export", data={})
+        assert response.status_code == 200
+
+        reader = csv.DictReader(io.StringIO(response.text))
+        rows = list(reader)
+        assert rows
+        assert rows[0]["company"].startswith("'=")
+        assert not rows[0]["company"].startswith("=")
+
 
 class TestScreenerPresets:
     def test_preset_crud(self, client):
@@ -68,3 +96,11 @@ class TestScreenerPresets:
         resp = client.get("/api/screener/presets")
         presets = resp.json()
         assert not any(p["id"] == preset_id for p in presets)
+
+    def test_preset_payload_too_large(self, client):
+        resp = client.post(
+            "/api/screener/presets",
+            content=json.dumps({"name": "Big Preset", "filters": {"blob": "x" * 20_000}}),
+            headers={"Content-Type": "application/json"},
+        )
+        assert resp.status_code == 413

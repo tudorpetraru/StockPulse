@@ -11,11 +11,15 @@ import pytest
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.testclient import TestClient
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
+from app.middleware.rate_limit import limiter
 from app.models.db_models import Portfolio, Position, Watchlist, WatchlistItem
 
 # ── Shared in-memory DB for Agent C tests ──
@@ -36,6 +40,11 @@ def _setup_db():
     Base.metadata.create_all(bind=_test_engine)
     yield
     Base.metadata.drop_all(bind=_test_engine)
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    limiter.reset()
 
 
 @pytest.fixture()
@@ -180,6 +189,9 @@ def client():
     test_app.include_router(portfolio_router)
     test_app.include_router(watchlist_router)
     test_app.include_router(news_router)
+    test_app.add_middleware(SlowAPIMiddleware)
+    test_app.state.limiter = limiter
+    test_app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     test_app.dependency_overrides[get_db] = _override_get_db
     test_app.state.data_service = _TestDataService()
     test_app.state.prediction_service = _TestPredictionService()

@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_data_service
+from app.errors import SERVICE_RECOVERABLE_ERRORS
 from app.models.db_models import Position, WatchlistItem
 from app.services.data_service import DataService
 
@@ -107,7 +108,7 @@ async def _fetch_news(
                 for row in batch:
                     if isinstance(row, dict):
                         items.append(_normalize_news_item(row))
-            except Exception as exc:  # noqa: BLE001
+            except SERVICE_RECOVERABLE_ERRORS as exc:
                 logger.warning("Google News lookup failed for query=%s: %s", query, exc)
 
         if not items:
@@ -139,7 +140,7 @@ async def _fetch_news(
 async def news_page(
     request: Request,
     filter: str = Query("all"),
-    q: str = Query(""),
+    q: str = Query("", max_length=500),
     db: Session = Depends(get_db),
     ds: DataService = Depends(get_data_service),
 ):
@@ -168,7 +169,7 @@ async def news_page(
 async def news_feed_partial(
     request: Request,
     filter: str = Query("all"),
-    q: str = Query(""),
+    q: str = Query("", max_length=500),
     page: int = Query(1),
     db: Session = Depends(get_db),
     ds: DataService = Depends(get_data_service),

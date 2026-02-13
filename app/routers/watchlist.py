@@ -97,7 +97,7 @@ def watchlist_table(
 @router.post("/api/watchlists", response_class=HTMLResponse)
 def create_watchlist(
     request: Request,
-    name: str = Form(...),
+    name: str = Form(..., max_length=200),
     db: Session = Depends(get_db),
 ):
     wl = Watchlist(name=name)
@@ -123,7 +123,7 @@ def delete_watchlist(watchlist_id: int, db: Session = Depends(get_db)):
 
 @router.post("/api/watchlist/add")
 def quick_add_watchlist(
-    symbol: str = Form(...),
+    symbol: str = Form(..., max_length=20, pattern=r"^\s*[A-Za-z0-9.\-]{1,10}\s*$"),
     watchlist_id: int | None = Form(None),
     db: Session = Depends(get_db),
 ):
@@ -153,8 +153,8 @@ def quick_add_watchlist(
 def add_watchlist_item(
     request: Request,
     watchlist_id: int = Form(...),
-    ticker: str = Form(...),
-    notes: str = Form(""),
+    ticker: str = Form(..., max_length=20, pattern=r"^\s*[A-Za-z0-9.\-]{1,10}\s*$"),
+    notes: str = Form("", max_length=2000),
     db: Session = Depends(get_db),
 ):
     ticker_clean = ticker.upper().strip()
@@ -182,7 +182,7 @@ def add_watchlist_item(
 def update_watchlist_item(
     request: Request,
     item_id: int,
-    notes: str = Form(""),
+    notes: str = Form("", max_length=2000),
     db: Session = Depends(get_db),
 ):
     item = db.get(WatchlistItem, item_id)

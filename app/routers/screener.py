@@ -16,6 +16,8 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import get_data_service
+from app.errors import ROUTE_RECOVERABLE_ERRORS
+from app.middleware.rate_limit import limiter
 from app.models.db_models import ScreenerPreset
 from app.services.data_service import DataService
 
@@ -56,6 +58,13 @@ def _extract_filters(form: dict[str, Any]) -> dict[str, Any]:
             else:
                 filters[key] = val
     return filters
+
+
+def _csv_safe(value: str) -> str:
+    """Prevent CSV injection by escaping formula-triggering prefixes."""
+    if value and value[0] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + value
+    return value
 
 
 # ── Sorting / pagination ─────────────────────────────────────────────────
@@ -103,6 +112,7 @@ async def screener_page(request: Request, db: Session = Depends(get_db)):
 
 
 @router.post("/hx/screener/results", response_class=HTMLResponse)
+@limiter.limit("10/minute")
 async def hx_screener_results(
     request: Request,
     sort_by: str = Query("mkt_cap"),
@@ -118,7 +128,7 @@ async def hx_screener_results(
     try:
         all_results = await ds.screen_stocks(filters)
         status = "ok"
-    except Exception:
+    except ROUTE_RECOVERABLE_ERRORS:
         logger.exception("Screener query error")
         all_results = []
         status = "error"
@@ -141,6 +151,7 @@ async def hx_screener_results(
 # ── CSV export ────────────────────────────────────────────────────────────
 
 @router.post("/api/screener/export")
+@limiter.limit("5/minute")
 async def screener_export(
     request: Request,
     ds: DataService = Depends(get_data_service),
@@ -150,7 +161,7 @@ async def screener_export(
 
     try:
         results = await ds.screen_stocks(filters)
-    except Exception:
+    except ROUTE_RECOVERABLE_ERRORS:
         results = []
 
     results = _sort_results(results)
@@ -159,7 +170,7 @@ async def screener_export(
     writer = csv.DictWriter(output, fieldnames=["ticker", "company", "price", "change_pct", "mkt_cap", "pe", "eps", "volume"])
     writer.writeheader()
     for r in results:
-        writer.writerow({k: r.get(k, "") for k in writer.fieldnames})
+        writer.writerow({k: _csv_safe(str(r.get(k, ""))) for k in writer.fieldnames})
 
     output.seek(0)
     return StreamingResponse(
@@ -178,10 +189,17 @@ async def list_presets(db: Session = Depends(get_db)):
 
 @router.post("/api/screener/presets")
 async def save_preset(request: Request, db: Session = Depends(get_db)):
-    body = await request.json()
+    try:
+        body = await request.json()
+    except ValueError:
+        return JSONResponse(content={"error": "Invalid JSON payload"}, status_code=400)
+    if not isinstance(body, dict):
+        return JSONResponse(content={"error": "Invalid JSON payload"}, status_code=400)
     name = (body.get("name") or "Untitled").strip()[:120]
     filters = body.get("filters", {})
     filters_json = json.dumps(filters)
+    if len(filters_json) > 10_000:
+        return JSONResponse(content={"error": "Filters payload too large"}, status_code=413)
 
     existing = db.query(ScreenerPreset).filter(ScreenerPreset.name == name).first()
     if existing:

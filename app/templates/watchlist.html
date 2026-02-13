@@ -22,6 +22,7 @@
   <div x-data="{ open: false }" style="display:flex; align-items:center;">
     <button class="sp-tab" style="color:var(--blue);" @click="open = !open">+ New List</button>
     <form x-show="open" action="/api/watchlists" method="post" style="display:flex; gap:4px; padding:4px 8px;">
+      <input type="hidden" name="csrf_token" value="">
       <input class="sp-input" name="name" placeholder="List name" required style="width:120px; padding:4px 8px; font-size:12px;">
       <button type="submit" class="btn btn-primary btn-sm">Create</button>
     </form>
@@ -33,6 +34,7 @@
       hx-target="#watchlist-table"
       hx-swap="innerHTML"
       style="display:flex; gap:8px; margin-bottom:var(--space-lg);">
+  <input type="hidden" name="csrf_token" value="">
   <input type="hidden" name="watchlist_id" value="{{ active_watchlist.id }}">
   <input class="sp-input" name="ticker" placeholder="Add ticker (e.g., TSLA)" style="max-width:250px;" required>
   <button type="submit" class="btn btn-primary btn-sm">+ Add</button>

@@ -63,3 +63,16 @@ def test_delete_watchlist(client, sample_watchlist):
     response = client.delete(f"/api/watchlists/{sample_watchlist.id}")
     assert response.status_code == 200
     assert response.json() == {"ok": True}
+
+
+def test_create_watchlist_name_too_long(client):
+    response = client.post("/api/watchlists", data={"name": "x" * 300}, follow_redirects=False)
+    assert response.status_code == 422
+
+
+def test_add_watchlist_invalid_ticker(client, sample_watchlist):
+    response = client.post(
+        "/api/watchlist-items",
+        data={"watchlist_id": sample_watchlist.id, "ticker": "INVALID TICKER"},
+    )
+    assert response.status_code == 422

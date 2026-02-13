@@ -66,3 +66,21 @@ def test_delete_portfolio(client, sample_portfolio):
     response = client.delete(f"/api/portfolios/{sample_portfolio.id}")
     assert response.status_code == 200
     assert response.json() == {"ok": True}
+
+
+def test_create_portfolio_name_too_long(client):
+    response = client.post("/api/portfolios", data={"name": "x" * 300}, follow_redirects=False)
+    assert response.status_code == 422
+
+
+def test_add_position_negative_shares(client, sample_portfolio):
+    response = client.post(
+        "/api/positions",
+        data={
+            "portfolio_id": sample_portfolio.id,
+            "ticker": "AAPL",
+            "shares": "-10",
+            "avg_cost": "100",
+        },
+    )
+    assert response.status_code == 422
