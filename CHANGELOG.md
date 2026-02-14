@@ -7,15 +7,19 @@ All notable changes to this project are documented in this file.
 ### Added
 
 - Added a "Captured Prediction Records" table in the ticker Predictions tab to show stored snapshot fields (snapshot date, firm, action, rating, target, implied return, resolve date, status, source).
+- Added Screener classification filters for `Sector` and `Industry`, including dynamic `GET /api/screener/industries` loading with sector-scoped in-memory caching.
 
 ### Changed
 
 - Updated prediction history payloads to include normalized `snapshot_date` and `source` fields for UI/table rendering.
+- Updated Screener toolbar control styling/alignment for preset select/actions and switched screener execution to explicit `Screen` submit only (no implicit auto-submit on input change).
 
 ### Fixed
 
 - Fixed `/api/chart/{symbol}/consensus` period handling so `1Y`, `2Y`, and `All` return distinct data windows rather than the same range.
 - Fixed prediction snapshot ingestion for duplicate firm rows in the same run by de-duplicating per firm before DB upsert, preventing unique-key insert failures.
+- Fixed Screener filter mapping to propagate `sector` and `industry` values to Finviz query options.
+- Fixed a sticky-empty Screener cache failure mode by bypassing cached empty result sets and retrying upstream screener fetches before surfacing an error.
 
 ### Tests
 
@@ -23,8 +27,11 @@ All notable changes to this project are documented in this file.
   - Predictions partial rendering of the "Captured Prediction Records" table.
   - Consensus chart period filtering behavior (`1Y` vs `All`) and upstream yfinance period selection.
 - Added prediction-pipeline regression coverage for duplicate-firm snapshot ingestion to ensure one upserted row per firm/date/ticker.
+- Added Screener router regressions for sector/industry filter forwarding and industry endpoint behavior.
+- Added data-service regressions for sector/industry option mapping, empty-cache refetch behavior, and provider-error propagation in screener queries.
 - Targeted suites passing:
   - `pytest -q tests/routers/test_ticker.py tests/services/test_prediction_pipeline.py`
+  - `pytest -q tests/routers/test_screener.py tests/services/test_data_service.py`
 
 ## 2026-02-13
 

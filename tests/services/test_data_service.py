@@ -11,8 +11,10 @@ from app.services.data_service import (
     _clip_near_zero,
     _display_column_label,
     _fmt_market_cap,
+    _map_filters_to_finviz,
     _to_float,
 )
+from app.services.providers.base import DataProviderError
 
 
 class _DummyCache:
@@ -278,3 +280,58 @@ def test_get_financials_maps_timestamp_columns_for_annual_and_quarterly():
 
     assert quarterly["columns"] == ["2025-12-31", "2025-09-30"]
     assert quarterly["income"][0]["values"] == ["10.00B", "9.00B"]
+
+
+def test_map_filters_to_finviz_includes_sector_and_industry():
+    mapped = _map_filters_to_finviz({"sector": "technology", "industry": "semiconductors"})
+    assert mapped["Sector"] == "Technology"
+    assert mapped["Industry"] == "Semiconductors"
+
+
+def test_screen_stocks_ignores_cached_empty_and_refetches(monkeypatch):
+    cache = _DummyCache()
+    key = cache.build_key("screener", "US")
+    cache.set(key, [], ttl=60)
+
+    class _OverviewWithRows:
+        def set_filter(self, filters_dict: dict[str, str]):
+            _ = filters_dict
+
+        def screener_view(self, **kwargs):
+            _ = kwargs
+            return pd.DataFrame(
+                [{"Ticker": "AAPL", "Company": "Apple Inc", "Price": 200.0, "Change": "+1.2%", "Market Cap": "3.0T", "P/E": 30.0, "EPS (ttm)": 6.7, "Volume": 12345}]
+            )
+
+    monkeypatch.setattr("app.services.data_service.Overview", _OverviewWithRows)
+
+    service = DataService(cache=cache, yfinance_provider=_DummyProvider(), finviz_provider=_DummyProvider())
+    rows = asyncio.run(service.screen_stocks({}))
+
+    assert rows
+    assert rows[0]["ticker"] == "AAPL"
+
+
+def test_screen_stocks_raises_provider_error_on_recoverable_failure(monkeypatch):
+    cache = _DummyCache()
+    key = cache.build_key("screener", "US")
+
+    class _OverviewRaises:
+        def set_filter(self, filters_dict: dict[str, str]):
+            _ = filters_dict
+
+        def screener_view(self, **kwargs):
+            _ = kwargs
+            raise OSError("finviz rate limited")
+
+    monkeypatch.setattr("app.services.data_service.Overview", _OverviewRaises)
+
+    service = DataService(cache=cache, yfinance_provider=_DummyProvider(), finviz_provider=_DummyProvider())
+
+    try:
+        asyncio.run(service.screen_stocks({}))
+        assert False, "Expected DataProviderError"
+    except DataProviderError:
+        pass
+
+    assert cache.get(key) is None

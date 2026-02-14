@@ -12,6 +12,8 @@ class TestScreenerPage:
         resp = client.get("/screener")
         assert resp.status_code == 200
         assert "Stock Screener" in resp.text
+        assert 'name="sector"' in resp.text
+        assert 'name="industry"' in resp.text
 
     def test_screener_results_post(self, client):
         """POST /hx/screener/results returns HTML partial."""
@@ -32,6 +34,43 @@ class TestScreenerPage:
         """Pagination parameter is accepted."""
         resp = client.post("/hx/screener/results?page=2", data={})
         assert resp.status_code == 200
+
+    def test_screener_forwards_sector_and_industry_filters(self, client):
+        captured: dict[str, object] = {}
+
+        async def fake_screen_stocks(filters):
+            captured.update(filters)
+            return []
+
+        client.app.state.data_service.screen_stocks = fake_screen_stocks
+        response = client.post(
+            "/hx/screener/results",
+            data={"sector": "Technology", "industry": "Semiconductors"},
+        )
+        assert response.status_code == 200
+        assert captured.get("sector") == "Technology"
+        assert captured.get("industry") == "Semiconductors"
+
+    def test_screener_industry_options_by_sector(self, client, monkeypatch):
+        from app.routers import screener as screener_router_module
+
+        def fake_sector_industries(sector: str):
+            assert sector == "Technology"
+            return ["Semiconductors", "Software - Infrastructure"]
+
+        monkeypatch.setattr(screener_router_module, "_sector_industry_options", fake_sector_industries)
+        response = client.get("/api/screener/industries?sector=technology")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["sector"] == "Technology"
+        assert body["industries"] == ["Semiconductors", "Software - Infrastructure"]
+
+    def test_screener_industry_options_invalid_sector(self, client):
+        response = client.get("/api/screener/industries?sector=not-a-real-sector")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["sector"] == ""
+        assert body["industries"] == []
 
 
 class TestScreenerCSV:

@@ -3,6 +3,7 @@ Screener router — full page + HTMX results partial + CSV export + preset CRUD.
 """
 from __future__ import annotations
 
+import asyncio
 import csv
 import io
 import json
@@ -11,6 +12,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from finvizfinance.group.overview import Overview as GroupOverview
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -23,6 +25,7 @@ from app.services.data_service import DataService
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+_sector_industry_cache: dict[str, list[str]] = {}
 
 
 # ── Jinja2 ────────────────────────────────────────────────────────────────
@@ -40,6 +43,7 @@ _FILTER_FIELDS = [
     "eps_min", "eps_max", "roe_min", "roe_max",
     "rsi_min", "rsi_max", "sma50_pos",
     "insider_min", "insider_max",
+    "sector", "industry",
 ]
 
 
@@ -58,6 +62,44 @@ def _extract_filters(form: dict[str, Any]) -> dict[str, Any]:
             else:
                 filters[key] = val
     return filters
+
+
+def _finviz_filter_options(filter_name: str) -> list[str]:
+    """Return available finviz options for a given filter key."""
+    try:
+        from finvizfinance.constants import filter_dict
+    except Exception:
+        return []
+    options = list(filter_dict.get(filter_name, {}).get("option", {}).keys())
+    return [opt for opt in options if isinstance(opt, str) and opt and opt != "Any"]
+
+
+def _match_finviz_filter_option(filter_name: str, value: str | None) -> str | None:
+    text = (value or "").strip()
+    if not text:
+        return None
+    options = _finviz_filter_options(filter_name)
+    lookup = {option.casefold(): option for option in options}
+    return lookup.get(text.casefold())
+
+
+def _sector_industry_options(sector: str) -> list[str]:
+    cache_key = sector.casefold()
+    cached = _sector_industry_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    overview = GroupOverview()
+    group_name = f"Industry ({sector})"
+    df = overview.screener_view(group=group_name, order="Name")
+    if df is None or getattr(df, "empty", True) or "Name" not in getattr(df, "columns", []):
+        industries: list[str] = []
+    else:
+        rows = df["Name"].dropna().astype(str).tolist()
+        industries = sorted({row.strip() for row in rows if row and row.strip()})
+
+    _sector_industry_cache[cache_key] = industries
+    return industries
 
 
 def _csv_safe(value: str) -> str:
@@ -105,9 +147,11 @@ def _paginate(
 async def screener_page(request: Request, db: Session = Depends(get_db)):
     templates = _templates()
     presets = _list_presets(db)
+    sector_options = _finviz_filter_options("Sector")
     return templates.TemplateResponse("screener.html", {
         "request": request,
         "presets": presets,
+        "sector_options": sector_options,
     })
 
 
@@ -178,6 +222,19 @@ async def screener_export(
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=screener_export.csv"},
     )
+
+
+@router.get("/api/screener/industries")
+async def screener_industry_options(sector: str = Query("")):
+    matched_sector = _match_finviz_filter_option("Sector", sector)
+    if not matched_sector:
+        return JSONResponse(content={"sector": "", "industries": []})
+    try:
+        industries = await asyncio.to_thread(_sector_industry_options, matched_sector)
+    except Exception as exc:
+        logger.warning("Failed to load industries for sector=%s: %s", matched_sector, exc)
+        industries = []
+    return JSONResponse(content={"sector": matched_sector, "industries": industries})
 
 
 # ── Preset CRUD ───────────────────────────────────────────────────────────

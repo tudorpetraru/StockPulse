@@ -3,16 +3,19 @@
 
 {% block content %}
 <div class="screener-toolbar">
-    <h2 class="page-title" style="margin-bottom:0;">Stock Screener</h2>
+    <h2 class="page-title screener-toolbar-title">Stock Screener</h2>
     <div class="screener-toolbar-actions">
-        <select id="preset-select" class="wf-input screener-preset-select" onchange="loadPreset(this.value)">
-            <option value="">Load Preset...</option>
-            {% for p in presets %}
-            <option value="{{ p.id }}">{{ p.name }}</option>
-            {% endfor %}
-        </select>
-        <button class="btn btn-primary toolbar-btn" onclick="savePreset()">Save Preset</button>
-        <button class="btn toolbar-btn" onclick="resetFilters()">Reset</button>
+        <div class="screener-preset-wrap">
+            <select id="preset-select" class="wf-input screener-preset-select" onchange="loadPreset(this.value)"
+                aria-label="Load screener preset">
+                <option value="">Load Preset...</option>
+                {% for p in presets %}
+                <option value="{{ p.id }}">{{ p.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="button" class="btn btn-primary toolbar-btn" onclick="savePreset()">Save Preset</button>
+        <button type="button" class="btn toolbar-btn" onclick="resetFilters()">Reset</button>
     </div>
 </div>
 
@@ -20,8 +23,25 @@
     <!-- ── Filter Panel ──────────────────────────────────────────────── -->
     <div class="card" style="padding:16px;">
         <form id="screener-form" hx-post="/hx/screener/results" hx-target="#screener-results" hx-swap="innerHTML"
-            hx-trigger="submit, change from:.auto-submit delay:300ms">
+            hx-trigger="submit">
             <input type="hidden" name="csrf_token" value="">
+
+            <h3 style="font-size:14px;color:var(--navy);margin-bottom:12px;">Classification</h3>
+            <div class="filter-group">
+                <label>Sector</label>
+                <select name="sector" class="wf-input auto-submit">
+                    <option value="">Any</option>
+                    {% for sector in sector_options %}
+                    <option value="{{ sector }}">{{ sector }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Industry</label>
+                <select id="industry-select" name="industry" class="wf-input auto-submit" disabled>
+                    <option value="">Any</option>
+                </select>
+            </div>
 
             <h3 style="font-size:14px;color:var(--navy);margin-bottom:12px;">Valuation</h3>
             <div class="filter-group">
@@ -131,8 +151,39 @@
 </div>
 
 <script>
+    async function refreshIndustryOptions(selectedIndustry = '') {
+        const form = document.getElementById('screener-form');
+        const sectorSelect = form.querySelector('[name="sector"]');
+        const industrySelect = document.getElementById('industry-select');
+        const sector = sectorSelect ? sectorSelect.value : '';
+
+        industrySelect.innerHTML = '<option value="">Any</option>';
+        industrySelect.disabled = true;
+
+        if (!sector) return;
+
+        try {
+            const resp = await fetch(`/api/screener/industries?sector=${encodeURIComponent(sector)}`);
+            const payload = await resp.json();
+            const industries = Array.isArray(payload.industries) ? payload.industries : [];
+            industries.forEach((industry) => {
+                const opt = document.createElement('option');
+                opt.value = industry;
+                opt.textContent = industry;
+                industrySelect.appendChild(opt);
+            });
+            industrySelect.disabled = false;
+            if (selectedIndustry && industries.includes(selectedIndustry)) {
+                industrySelect.value = selectedIndustry;
+            }
+        } catch {
+            industrySelect.disabled = false;
+        }
+    }
+
     function resetFilters() {
         document.getElementById('screener-form').reset();
+        refreshIndustryOptions();
     }
 
     async function loadPreset(presetId) {
@@ -143,7 +194,13 @@
         if (!preset) return;
         resetFilters();
         const form = document.getElementById('screener-form');
+        const sectorValue = preset.filters.sector || '';
+        const industryValue = preset.filters.industry || '';
+        const sectorSelect = form.querySelector('[name="sector"]');
+        if (sectorSelect) sectorSelect.value = sectorValue;
+        await refreshIndustryOptions(industryValue);
         Object.entries(preset.filters).forEach(([k, v]) => {
+            if (k === 'sector' || k === 'industry') return;
             const el = form.querySelector(`[name="${k}"]`);
             if (el) el.value = v;
         });
@@ -206,6 +263,17 @@
                 exportBtn.style.display = 'none';
             }
         }
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('screener-form');
+        const sectorSelect = form.querySelector('[name="sector"]');
+        if (sectorSelect) {
+            sectorSelect.addEventListener('change', function () {
+                refreshIndustryOptions();
+            });
+        }
+        refreshIndustryOptions();
     });
 </script>
 {% endblock %}

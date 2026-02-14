@@ -489,7 +489,9 @@ class DataService:
             normalized_cached = _normalize_screener_rows(cached)
             if normalized_cached != cached:
                 self.cache.set(cache_key, normalized_cached, ttl_for("screener"))
-            return normalized_cached
+            # Do not trust cached empties, which can be produced by transient upstream failures.
+            if normalized_cached:
+                return normalized_cached
 
         finviz_filters = _map_filters_to_finviz(filters)
 
@@ -518,11 +520,21 @@ class DataService:
                 )
             return rows
 
-        try:
-            rows = await asyncio.to_thread(_run)
-        except SERVICE_RECOVERABLE_ERRORS as exc:
-            logger.warning("Screener query failed: %s", exc)
-            rows = []
+        rows: list[dict[str, Any]] | None = None
+        last_error: Exception | None = None
+        for attempt in range(3):
+            try:
+                rows = await asyncio.to_thread(_run)
+                break
+            except SERVICE_RECOVERABLE_ERRORS as exc:
+                last_error = exc
+                logger.warning("Screener query failed (attempt %s/3): %s", attempt + 1, exc)
+                if attempt < 2:
+                    await asyncio.sleep(2 ** attempt)
+
+        if rows is None:
+            # Surface provider failures so the route can render an explicit error state.
+            raise DataProviderError(f"Screener query failed: {last_error}") from last_error
 
         normalized_rows = _normalize_screener_rows(rows)
         self.cache.set(cache_key, normalized_rows, ttl_for("screener"))
@@ -556,6 +568,14 @@ def _map_filters_to_finviz(filters: dict[str, Any]) -> dict[str, str]:
         mapped["50-Day Simple Moving Average"] = "Price above SMA50"
     elif sma50_pos == "below":
         mapped["50-Day Simple Moving Average"] = "Price below SMA50"
+
+    sector = _match_finviz_option("Sector", filters.get("sector"))
+    if sector and sector != "Any":
+        mapped["Sector"] = sector
+
+    industry = _match_finviz_option("Industry", filters.get("industry"))
+    if industry and industry != "Any":
+        mapped["Industry"] = industry
 
     return mapped
 
@@ -609,6 +629,17 @@ def _pick_option(finviz_key: str, direction: str, value: float, suffix: str = ""
         if threshold <= value:
             return option
     return candidates[0][1]
+
+
+def _match_finviz_option(finviz_key: str, value: Any) -> str | None:
+    text = _as_str(value).strip()
+    if not text:
+        return None
+    from finvizfinance.constants import filter_dict
+
+    options = list(filter_dict.get(finviz_key, {}).get("option", {}).keys())
+    lookup = {str(option).casefold(): str(option) for option in options}
+    return lookup.get(text.casefold())
 
 
 def _as_str(value: Any) -> str:
