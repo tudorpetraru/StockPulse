@@ -55,6 +55,26 @@ class PredictionSnapshotService:
         db.commit()
         return {"tracked": len(tickers), "ok": ok, "failed": failed}
 
+    async def run_snapshot_for_symbol(
+        self,
+        db: Session,
+        ticker: str,
+        run_date: date | None = None,
+    ) -> dict[str, int | str]:
+        snapshot_date = run_date or date.today()
+        symbol = ticker.strip().upper()
+        if not symbol:
+            return {"tracked": 0, "ok": 0, "failed": 1, "ticker": ""}
+        try:
+            await self._snapshot_analyst_ratings(db, symbol, snapshot_date)
+            await self._snapshot_consensus(db, symbol, snapshot_date)
+            db.commit()
+            return {"tracked": 1, "ok": 1, "failed": 0, "ticker": symbol}
+        except SERVICE_RECOVERABLE_ERRORS as exc:
+            logger.warning("Snapshot failed for %s: %s", symbol, exc)
+            db.rollback()
+            return {"tracked": 1, "ok": 0, "failed": 1, "ticker": symbol}
+
     async def evaluate_expired_predictions(self, db: Session, today: date | None = None) -> dict[str, int]:
         reference = today or date.today()
         pending_analyst = self.repository.list_pending_analyst_snapshots(db, reference)
@@ -543,6 +563,16 @@ class PredictionService:
         db = self._session_factory()
         try:
             result = await self._snapshot_service.run_daily_snapshot(db)
+            return {"status": "ok", "snapshots_created": result.get("ok", 0), **result}
+        finally:
+            db.close()
+
+    async def run_snapshot_for_symbol(self, symbol: str) -> dict[str, object]:
+        if self._snapshot_service is None:
+            return {"status": "error", "message": "Snapshot service unavailable"}
+        db = self._session_factory()
+        try:
+            result = await self._snapshot_service.run_snapshot_for_symbol(db, symbol)
             return {"status": "ok", "snapshots_created": result.get("ok", 0), **result}
         finally:
             db.close()

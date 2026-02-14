@@ -40,6 +40,10 @@
     <p>StockPulse is collecting analyst predictions for <strong>{{ symbol }}</strong>.</p>
     <p>Accuracy scores require 12 months of data. First results will appear approximately 12 months after initial data
         collection.</p>
+    <p>Automatic snapshot collection runs <strong>{{ prediction_schedule_text }}</strong>.</p>
+    <p>When this page has no captured records yet, StockPulse will automatically trigger one on-load capture for this
+        symbol.</p>
+    <p id="prediction-snapshot-status" style="margin-top:8px;color:var(--gray-600);"></p>
     <p style="margin-top:12px;">In the meantime, you can see how analyst targets evolve over time in the chart below.
     </p>
 </div>
@@ -69,9 +73,12 @@
 <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <div class="card-title" style="margin-bottom:0;">Analyst Scorecard — {{ symbol }} Coverage</div>
-        <span style="font-size:12px;color:var(--gray-500);">Sorted by Composite Score ↓</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:12px;color:var(--gray-500);">Sorted by Composite Score ↓</span>
+            <button type="button" class="btn btn-sm" onclick="exportPredictionsTableCsv('scorecard-table', '{{ symbol }}-analyst-scorecard.csv')">Export CSV</button>
+        </div>
     </div>
-    <table class="wf-table">
+    <table id="scorecard-table" class="wf-table">
         <thead>
             <tr>
                 <th>Rank</th>
@@ -130,14 +137,17 @@
 <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <div class="card-title" style="margin-bottom:0;">Captured Prediction Records</div>
-        <span style="font-size:12px;color:var(--gray-500);">Showing latest {{ predictions|length if predictions else 0
-            }} entries</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:12px;color:var(--gray-500);">Showing latest {{ predictions|length if predictions else 0
+                }} entries</span>
+            <button type="button" class="btn btn-sm" onclick="exportPredictionsTableCsv('captured-predictions-table', '{{ symbol }}-captured-predictions.csv')">Export CSV</button>
+        </div>
     </div>
     <div style="font-size:12px;color:var(--gray-500);margin-bottom:12px;">
         Stored analyst snapshot fields for {{ symbol }} (date, firm, target, returns, resolution, source).
     </div>
     <div style="overflow-x:auto;">
-        <table class="wf-table">
+        <table id="captured-predictions-table" class="wf-table">
             <thead>
                 <tr>
                     <th>Snapshot Date</th>
@@ -198,6 +208,90 @@
         const spec = await resp.json();
         Plotly.newPlot('consensus-chart', spec.data, spec.layout, { responsive: true, displayModeBar: false });
     }
+
+    function exportPredictionsTableCsv(tableId, filename) {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+        const rows = Array.from(table.querySelectorAll('tr'));
+        const toCell = (value) => {
+            const text = String(value ?? '').replace(/\s+/g, ' ').trim();
+            return `"${text.replace(/"/g, '""')}"`;
+        };
+
+        const csvLines = rows.map((row) => {
+            const cells = Array.from(row.querySelectorAll('th, td'));
+            return cells.map((cell) => toCell(cell.textContent || '')).join(',');
+        });
+
+        const csv = '\uFEFF' + csvLines.join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+    }
+
+    function updatePredictionSnapshotStatus(message, tone) {
+        const el = document.getElementById('prediction-snapshot-status');
+        if (!el) return;
+        el.textContent = message || '';
+        if (tone === 'success') {
+            el.style.color = 'var(--positive)';
+            return;
+        }
+        if (tone === 'error') {
+            el.style.color = 'var(--negative)';
+            return;
+        }
+        el.style.color = 'var(--gray-600)';
+    }
+
+    async function maybeTriggerInitialPredictionSnapshot(symbol) {
+        const storageKey = `prediction-autosnapshot:${symbol}:${new Date().toISOString().slice(0, 10)}`;
+        try {
+            if (window.sessionStorage.getItem(storageKey)) {
+                return;
+            }
+            window.sessionStorage.setItem(storageKey, '1');
+        } catch (_) {
+            // Session storage can be unavailable in private browsing modes.
+        }
+
+        updatePredictionSnapshotStatus('No prediction records yet. Triggering an initial snapshot capture...');
+        const token = typeof getCsrfToken === 'function' ? getCsrfToken() : '';
+        try {
+            const resp = await fetch(`/api/predictions/${symbol}/snapshot/run`, {
+                method: 'POST',
+                headers: {
+                    'x-csrf-token': token,
+                },
+            });
+            const payload = await resp.json().catch(() => ({}));
+            if (!resp.ok || payload.status !== 'ok') {
+                if (resp.status === 429) {
+                    updatePredictionSnapshotStatus('Snapshot trigger is rate-limited. Try again in about a minute.', 'error');
+                } else {
+                    updatePredictionSnapshotStatus('Automatic snapshot trigger failed. It will retry on the scheduled run.', 'error');
+                }
+                return;
+            }
+
+            const created = Number(payload.snapshots_created || 0);
+            updatePredictionSnapshotStatus(`Snapshot run finished (${created} record set${created === 1 ? '' : 's'} updated). Refreshing...`, 'success');
+            if (window.htmx) {
+                window.htmx.ajax('GET', `/hx/ticker/${symbol}/predictions`, { target: '#tab-content', swap: 'innerHTML' });
+            }
+        } catch (_) {
+            updatePredictionSnapshotStatus('Automatic snapshot trigger failed. It will retry on the scheduled run.', 'error');
+        }
+    }
+
     loadConsensusChart('{{ symbol }}', '2Y');
+    {% if auto_snapshot_on_load %}
+    maybeTriggerInitialPredictionSnapshot('{{ symbol }}');
+    {% endif %}
 </script>
 {% endif %}

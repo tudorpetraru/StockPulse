@@ -8,11 +8,18 @@ All notable changes to this project are documented in this file.
 
 - Added a "Captured Prediction Records" table in the ticker Predictions tab to show stored snapshot fields (snapshot date, firm, action, rating, target, implied return, resolve date, status, source).
 - Added Screener classification filters for `Sector` and `Industry`, including dynamic `GET /api/screener/industries` loading with sector-scoped in-memory caching.
+- Added CSV export controls in the ticker Predictions tab for both:
+  - Analyst Scorecard table.
+  - Captured Prediction Records table.
+- Added symbol-scoped manual snapshot endpoint `POST /api/predictions/{symbol}/snapshot/run`.
 
 ### Changed
 
 - Updated prediction history payloads to include normalized `snapshot_date` and `source` fields for UI/table rendering.
 - Updated Screener toolbar control styling/alignment for preset select/actions and switched screener execution to explicit `Screen` submit only (no implicit auto-submit on input change).
+- Updated ticker Predictions cold-start UX to:
+  - Show scheduled snapshot cadence (`Mon-Fri at 6:00 PM ET` from config).
+  - Auto-trigger a one-time per-session on-load snapshot when no prediction records are present for the active symbol.
 
 ### Fixed
 

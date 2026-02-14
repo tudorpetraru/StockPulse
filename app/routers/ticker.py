@@ -9,6 +9,7 @@ from datetime import date, timedelta
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from app.config import get_settings
 from app.dependencies import get_data_service, get_prediction_service
 from app.errors import ROUTE_RECOVERABLE_ERRORS
 from app.services.chart_service import build_price_chart, build_consensus_chart
@@ -214,6 +215,11 @@ async def hx_predictions(
 ):
     symbol = symbol.upper()
     templates = _templates()
+    settings = get_settings()
+    schedule_hour = int(settings.prediction_snapshot_hour_et)
+    display_hour = schedule_hour % 12 or 12
+    am_pm = "AM" if schedule_hour < 12 else "PM"
+    prediction_schedule_text = f"Mon-Fri at {display_hour}:00 {am_pm} ET"
     try:
         summary = await ps.get_prediction_summary(symbol)
         # Keep "Current Consensus Target" aligned with the live analyst panel
@@ -234,10 +240,13 @@ async def hx_predictions(
         status = "error"
 
     cold_start = summary.get("resolved", 0) == 0
+    auto_snapshot_on_load = status == "ok" and len(history) == 0
     return templates.TemplateResponse("partials/ticker_predictions.html", {
         "request": request, "symbol": symbol,
         "summary": summary, "scorecard": scorecard,
         "predictions": history, "cold_start": cold_start,
+        "prediction_schedule_text": prediction_schedule_text,
+        "auto_snapshot_on_load": auto_snapshot_on_load,
         "status": status,
     })
 

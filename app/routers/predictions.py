@@ -106,6 +106,24 @@ async def prediction_snapshot_run(
     return JSONResponse(content=result)
 
 
+@router.post("/api/predictions/{symbol}/snapshot/run")
+@limiter.limit("2/minute")
+async def prediction_snapshot_run_symbol(
+    request: Request,
+    symbol: str,
+    ps: PredictionService = Depends(get_prediction_service),
+):
+    """Trigger a manual prediction snapshot run for a single ticker."""
+    _ = request
+    ticker = symbol.upper()
+    try:
+        result = await ps.run_snapshot_for_symbol(ticker)
+    except ROUTE_RECOVERABLE_ERRORS:
+        logger.exception("snapshot_run_symbol error %s", ticker)
+        result = {"status": "error", "message": f"Snapshot run failed for {ticker}"}
+    return JSONResponse(content=result)
+
+
 # ── Analyst Leaderboard page ─────────────────────────────────────────────
 
 @router.get("/analysts", response_class=HTMLResponse)
