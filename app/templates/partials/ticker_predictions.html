@@ -38,14 +38,12 @@
 <div class="cold-start">
     <h3>📊 Building Your Prediction Database</h3>
     <p>StockPulse is collecting analyst predictions for <strong>{{ symbol }}</strong>.</p>
-    <p>Accuracy scores require 12 months of data. First results will appear approximately 12 months after initial data
-        collection.</p>
-    <p>Automatic snapshot collection runs <strong>{{ prediction_schedule_text }}</strong>.</p>
-    <p>When this page has no captured records yet, StockPulse will automatically trigger one on-load capture for this
-        symbol.</p>
-    <p id="prediction-snapshot-status" style="margin-top:8px;color:var(--gray-600);"></p>
-    <p style="margin-top:12px;">In the meantime, you can see how analyst targets evolve over time in the chart below.
+    <p class="cold-start-detail">Accuracy scores require 12 months of data. First results will appear approximately 12
+        months after initial data collection. Automatic snapshot collection runs <strong>{{ prediction_schedule_text
+            }}</strong>. When this page has no captured records yet, StockPulse will automatically trigger one on-load
+        capture for this symbol. In the meantime, you can see how analyst targets evolve over time in the chart below.
     </p>
+    <p id="prediction-snapshot-status" class="cold-start-status"></p>
 </div>
 {% endif %}
 

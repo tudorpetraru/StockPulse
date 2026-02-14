@@ -787,6 +787,19 @@ body {
 
 .cold-start h3 { color: var(--blue); font-size: 16px; margin-bottom: var(--space-sm); }
 .cold-start p { font-size: 13px; color: var(--text-secondary); margin-bottom: var(--space-sm); }
+.cold-start-detail {
+  text-align: left;
+  max-width: 980px;
+  margin: 0 auto var(--space-sm);
+}
+.cold-start-status {
+  text-align: left;
+  margin: 8px auto 0;
+  max-width: 980px;
+}
+.cold-start-status:empty {
+  display: none;
+}
 
 /* ═══ Period selector ═══ */
 .period-selector { display: flex; gap: 4px; }
