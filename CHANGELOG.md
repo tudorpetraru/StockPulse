@@ -2,6 +2,30 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-02-14
+
+### Added
+
+- Added a "Captured Prediction Records" table in the ticker Predictions tab to show stored snapshot fields (snapshot date, firm, action, rating, target, implied return, resolve date, status, source).
+
+### Changed
+
+- Updated prediction history payloads to include normalized `snapshot_date` and `source` fields for UI/table rendering.
+
+### Fixed
+
+- Fixed `/api/chart/{symbol}/consensus` period handling so `1Y`, `2Y`, and `All` return distinct data windows rather than the same range.
+- Fixed prediction snapshot ingestion for duplicate firm rows in the same run by de-duplicating per firm before DB upsert, preventing unique-key insert failures.
+
+### Tests
+
+- Added ticker-router regression coverage for:
+  - Predictions partial rendering of the "Captured Prediction Records" table.
+  - Consensus chart period filtering behavior (`1Y` vs `All`) and upstream yfinance period selection.
+- Added prediction-pipeline regression coverage for duplicate-firm snapshot ingestion to ensure one upserted row per firm/date/ticker.
+- Targeted suites passing:
+  - `pytest -q tests/routers/test_ticker.py tests/services/test_prediction_pipeline.py`
+
 ## 2026-02-13
 
 ### Added

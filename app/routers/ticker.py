@@ -4,6 +4,7 @@ Ticker router — full page + HTMX partials + chart JSON APIs.
 from __future__ import annotations
 
 import logging
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -16,6 +17,8 @@ from app.services.prediction_service import PredictionService
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+_CONSENSUS_PERIOD_TO_YF = {"1Y": "1y", "2Y": "2y", "ALL": "max"}
+_CONSENSUS_PERIOD_TO_DAYS = {"1Y": 365, "2Y": 730}
 
 # ── Jinja2 helper ─────────────────────────────────────────────────────────
 
@@ -23,6 +26,18 @@ def _templates():
     """Lazy import to avoid circular deps during test collection."""
     from fastapi.templating import Jinja2Templates
     return Jinja2Templates(directory="app/templates")
+
+
+def _parse_iso_date(value: object) -> date | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        return date.fromisoformat(text.split("T", 1)[0])
+    except ValueError:
+        return None
 
 
 # ── Full page ─────────────────────────────────────────────────────────────
@@ -252,13 +267,25 @@ async def chart_consensus(
     ps: PredictionService = Depends(get_prediction_service),
 ):
     symbol = symbol.upper()
+    period_label = (period or "2Y").upper()
+    if period_label not in _CONSENSUS_PERIOD_TO_YF:
+        period_label = "2Y"
+    yf_period = _CONSENSUS_PERIOD_TO_YF[period_label]
     try:
-        prices = await ds.get_price_history(symbol, period="2y")
+        prices = await ds.get_price_history(symbol, period=yf_period)
         snapshots = await ps.get_consensus_history(symbol)
     except ROUTE_RECOVERABLE_ERRORS:
         prices, snapshots = [], []
+
+    lookback_days = _CONSENSUS_PERIOD_TO_DAYS.get(period_label)
+    if lookback_days is not None:
+        cutoff = date.today() - timedelta(days=lookback_days)
+        prices = [row for row in prices if (_parse_iso_date(row.get("date")) or date.min) >= cutoff]
+        snapshots = [row for row in snapshots if (_parse_iso_date(row.get("date")) or date.min) >= cutoff]
+
+    period_text = "All" if period_label == "ALL" else period_label
     chart = build_consensus_chart(
         [{"date": p["date"], "close": p["close"]} for p in prices],
-        snapshots, symbol, period,
+        snapshots, symbol, period_text,
     )
     return JSONResponse(content=chart)

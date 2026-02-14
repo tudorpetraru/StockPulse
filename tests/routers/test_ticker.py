@@ -1,6 +1,8 @@
 """Tests for the ticker router – route status codes, partials, chart APIs."""
 from __future__ import annotations
 
+from datetime import date, timedelta
+
 
 class TestTickerPage:
     def test_ticker_page_200(self, client):
@@ -117,6 +119,44 @@ class TestTickerPartials:
     def test_hx_predictions_200(self, client):
         self._assert_partial(client, "/hx/ticker/AAPL/predictions")
 
+    def test_hx_predictions_renders_captured_records_table(self, client):
+        async def _fake_prediction_summary(symbol: str):
+            _ = symbol
+            return {"active": 1, "resolved": 1, "accuracy": 75.0, "consensus_target": "$150.00"}
+
+        async def _fake_prediction_history(symbol: str):
+            _ = symbol
+            return [
+                {
+                    "snapshot_date": "2026-02-10",
+                    "date": "Feb 10",
+                    "year": 2026,
+                    "firm": "Demo Research",
+                    "source": "finvizfinance",
+                    "rating": "Buy",
+                    "action": "Upgrade",
+                    "target": "150.00",
+                    "implied_return": "8.0%",
+                    "resolved": True,
+                    "resolve_date": "2026-02-12",
+                    "actual_price": "148.00",
+                    "actual_return": "6.5%",
+                    "accurate": True,
+                    "error_pct": "1.5%",
+                    "days_left": 0,
+                }
+            ]
+
+        client.app.state.prediction_service.get_prediction_summary = _fake_prediction_summary
+        client.app.state.prediction_service.get_prediction_history = _fake_prediction_history
+        response = client.get("/hx/ticker/AAPL/predictions")
+        assert response.status_code == 200
+        assert "Captured Prediction Records" in response.text
+        assert "Snapshot Date" in response.text
+        assert "Demo Research" in response.text
+        assert "2026-02-10" in response.text
+        assert "finvizfinance" in response.text
+
     def test_hx_analysts_200(self, client):
         self._assert_partial(client, "/hx/ticker/AAPL/analysts")
 
@@ -136,3 +176,43 @@ class TestChartAPIs:
         assert resp.status_code == 200
         body = resp.json()
         assert "data" in body
+
+    def test_consensus_chart_period_filters_data_window(self, client):
+        old_date = (date.today() - timedelta(days=900)).isoformat()
+        mid_date = (date.today() - timedelta(days=500)).isoformat()
+        recent_date = (date.today() - timedelta(days=30)).isoformat()
+        called_periods: list[str] = []
+
+        async def _fake_price_history(symbol: str, period: str = "1y"):
+            _ = symbol
+            called_periods.append(period)
+            return [
+                {"date": old_date, "close": 80.0},
+                {"date": mid_date, "close": 90.0},
+                {"date": recent_date, "close": 100.0},
+            ]
+
+        async def _fake_consensus_history(symbol: str):
+            _ = symbol
+            return [
+                {"date": old_date, "avg_target": 85.0, "low_target": 80.0, "high_target": 95.0, "resolved": False, "accurate": None},
+                {"date": mid_date, "avg_target": 92.0, "low_target": 88.0, "high_target": 98.0, "resolved": False, "accurate": None},
+                {"date": recent_date, "avg_target": 110.0, "low_target": 105.0, "high_target": 120.0, "resolved": False, "accurate": None},
+            ]
+
+        client.app.state.data_service.get_price_history = _fake_price_history
+        client.app.state.prediction_service.get_consensus_history = _fake_consensus_history
+
+        one_year_resp = client.get("/api/chart/AAPL/consensus?period=1Y")
+        assert one_year_resp.status_code == 200
+        one_year_body = one_year_resp.json()
+        assert called_periods[-1] == "1y"
+        assert one_year_body["layout"]["title"]["text"].endswith("(1Y)")
+        assert one_year_body["data"][0]["x"] == [recent_date]
+
+        all_resp = client.get("/api/chart/AAPL/consensus?period=All")
+        assert all_resp.status_code == 200
+        all_body = all_resp.json()
+        assert called_periods[-1] == "max"
+        assert all_body["layout"]["title"]["text"].endswith("(All)")
+        assert all_body["data"][0]["x"] == [old_date, mid_date, recent_date]

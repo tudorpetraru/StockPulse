@@ -125,6 +125,53 @@ async def test_run_daily_snapshot_upserts_existing_rows(db_session: Session) -> 
 
 
 @pytest.mark.asyncio
+async def test_run_daily_snapshot_dedupes_duplicate_firms(db_session: Session) -> None:
+    _seed_tracked_ticker(db_session, "AAPL")
+
+    finviz = StubFinvizProvider(
+        {
+            "AAPL": [
+                {
+                    "firm": "Cantor Fitzgerald",
+                    "action": "Initiated",
+                    "rating": "Overweight",
+                    "price_target": None,
+                },
+                {
+                    "firm": "Cantor Fitzgerald",
+                    "action": "Initiated",
+                    "rating": "Overweight",
+                    "price_target": "$182",
+                },
+            ]
+        }
+    )
+    yfinance = StubYFinanceProvider(
+        current_prices={"AAPL": 150.0},
+        consensus_by_ticker={
+            "AAPL": {
+                "low": 120.0,
+                "avg": 170.0,
+                "median": 168.0,
+                "high": 200.0,
+                "count": 30,
+                "consensus": "buy",
+                "current": 150.0,
+            }
+        },
+    )
+    service = PredictionSnapshotService(yfinance_provider=yfinance, finviz_provider=finviz, repository=PredictionRepository())
+
+    result = await service.run_daily_snapshot(db_session, run_date=date(2026, 2, 14))
+    assert result == {"tracked": 1, "ok": 1, "failed": 0}
+
+    analyst_rows = db_session.scalars(select(AnalystSnapshot).where(AnalystSnapshot.ticker == "AAPL")).all()
+    assert len(analyst_rows) == 1
+    assert analyst_rows[0].firm == "Cantor Fitzgerald"
+    assert analyst_rows[0].price_target == 182.0
+
+
+@pytest.mark.asyncio
 async def test_evaluate_expired_predictions_resolves_and_marks_unresolvable(db_session: Session) -> None:
     snapshot_date = date(2025, 1, 1)
     target_date = snapshot_date + timedelta(days=365)

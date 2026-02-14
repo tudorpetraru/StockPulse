@@ -127,53 +127,65 @@
 </div>
 {% endif %}
 
-<!-- Prediction History Feed -->
-{% if predictions %}
 <div class="card">
-    <div class="card-title">Prediction History</div>
-    <div style="display:flex;gap:8px;margin-bottom:16px;">
-        <button class="btn btn-sm btn-primary">All</button>
-        <button class="btn btn-sm">Resolved</button>
-        <button class="btn btn-sm">Pending</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div class="card-title" style="margin-bottom:0;">Captured Prediction Records</div>
+        <span style="font-size:12px;color:var(--gray-500);">Showing latest {{ predictions|length if predictions else 0
+            }} entries</span>
     </div>
-
-    {% for p in predictions %}
-    <div class="prediction-item">
-        <div class="prediction-date">{{ p.date }}<br>{{ p.year }}</div>
-        <div class="prediction-content">
-            <div class="prediction-firm">
-                {{ p.firm }}
-                <span
-                    class="badge {% if p.rating in ['Buy','Strong Buy','Overweight'] %}badge-green{% elif p.rating in ['Sell','Strong Sell','Underweight'] %}badge-red{% else %}badge-amber{% endif %}"
-                    style="margin-left:6px;">{{ p.rating }}</span>
-            </div>
-            <div class="prediction-detail">{{ p.action }} with target <strong>{% if p.target != "N/A" %}${{ p.target }}{% else %}N/A{% endif %}</strong> (implied {{
-                p.implied_return }})</div>
-            {% if p.resolved %}
-            <div class="prediction-detail">Actual price on {{ p.resolve_date }}: <strong>{% if p.actual_price != "N/A" %}${{ p.actual_price }}{% else %}N/A{% endif %}</strong>
-                (actual return: {{ p.actual_return }})</div>
-            {% else %}
-            <div class="prediction-detail" style="color:var(--gray-400);">Resolves: {{ p.resolve_date }}</div>
-            {% endif %}
-        </div>
-        <div class="prediction-outcome">
-            {% if p.resolved %}
-            {% if p.accurate %}
-            <span class="badge badge-green">✓ Accurate</span>
-            <div style="font-size:11px;color:var(--green);margin-top:4px;">Error: {{ p.error_pct }}</div>
-            {% else %}
-            <span class="badge badge-red">✗ Missed</span>
-            <div style="font-size:11px;color:var(--red);margin-top:4px;">Error: {{ p.error_pct }}</div>
-            {% endif %}
-            {% else %}
-            <span class="badge badge-blue">Pending</span>
-            <div style="font-size:11px;color:var(--gray-500);margin-top:4px;">{{ p.days_left }} days left</div>
-            {% endif %}
-        </div>
+    <div style="font-size:12px;color:var(--gray-500);margin-bottom:12px;">
+        Stored analyst snapshot fields for {{ symbol }} (date, firm, target, returns, resolution, source).
     </div>
-    {% endfor %}
+    <div style="overflow-x:auto;">
+        <table class="wf-table">
+            <thead>
+                <tr>
+                    <th>Snapshot Date</th>
+                    <th>Firm</th>
+                    <th>Action</th>
+                    <th>Rating</th>
+                    <th>Target</th>
+                    <th>Implied Return</th>
+                    <th>Resolve Date</th>
+                    <th>Status</th>
+                    <th>Source</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if predictions %}
+                {% for p in predictions[:25] %}
+                <tr>
+                    <td>{{ p.snapshot_date }}</td>
+                    <td>{{ p.firm }}</td>
+                    <td>{{ p.action }}</td>
+                    <td>{{ p.rating }}</td>
+                    <td>{% if p.target != "N/A" %}${{ p.target }}{% else %}N/A{% endif %}</td>
+                    <td>{{ p.implied_return }}</td>
+                    <td>{{ p.resolve_date }}</td>
+                    <td>
+                        {% if p.resolved %}
+                        {% if p.accurate %}
+                        <span class="badge badge-green">Resolved ✓</span>
+                        {% else %}
+                        <span class="badge badge-red">Resolved ✗</span>
+                        {% endif %}
+                        {% else %}
+                        <span class="badge badge-blue">Pending</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ p.source }}</td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="9" style="color:var(--gray-500);font-style:italic;">No prediction snapshots captured
+                        yet for {{ symbol }}.</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
 </div>
-{% endif %}
 
 <script>
     async function loadConsensusChart(symbol, period, periodButton) {

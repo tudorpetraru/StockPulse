@@ -197,7 +197,23 @@ class PredictionSnapshotService:
         ratings = await self.finviz.get_analyst_ratings(ticker)
         current_price = await self.yfinance.get_current_price(ticker)
 
+        deduped_rows: dict[str, dict[str, object]] = {}
         for row in ratings:
+            if not isinstance(row, dict):
+                continue
+            firm = str(row.get("firm") or row.get("analyst_name") or "").strip()
+            if not firm:
+                continue
+            key = firm.casefold()
+            existing = deduped_rows.get(key)
+            if existing is None:
+                deduped_rows[key] = {**row, "firm": firm}
+                continue
+            # Prefer records that include a usable target when duplicate firms appear.
+            if _to_float(existing.get("price_target")) is None and _to_float(row.get("price_target")) is not None:
+                deduped_rows[key] = {**row, "firm": firm}
+
+        for row in deduped_rows.values():
             firm = str(row.get("firm") or "Unknown")
             existing = self.repository.get_analyst_snapshot(db, ticker=ticker, snapshot_date=snapshot_date, firm=firm)
             price_target = _to_float(row.get("price_target"))
@@ -585,9 +601,11 @@ class PredictionService:
             error = abs(row.prediction_error) if row.prediction_error is not None else None
             history.append(
                 {
+                    "snapshot_date": row.snapshot_date.isoformat(),
                     "date": row.snapshot_date.strftime("%b %d"),
                     "year": row.snapshot_date.year,
                     "firm": row.firm,
+                    "source": row.source,
                     "rating": row.rating,
                     "action": row.action or "Updated",
                     "target": f"{row.price_target:.2f}" if row.price_target is not None else "N/A",
