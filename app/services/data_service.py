@@ -509,6 +509,8 @@ class DataService:
                     {
                         "ticker": _as_str(row.get("Ticker")),
                         "company": _as_str(row.get("Company")),
+                        "sector": _as_str(row.get("Sector")),
+                        "industry": _as_str(row.get("Industry")),
                         "price": _to_float(row.get("Price")),
                         "change_pct": _clip_near_zero(_to_percent_float(row.get("Change"))),
                         "mkt_cap": _fmt_market_cap(row.get("Market Cap")),
@@ -873,6 +875,8 @@ def _normalize_screener_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]
             {
                 "ticker": _as_str(_first(row, "ticker", "Ticker")).upper(),
                 "company": _as_str(_first(row, "company", "Company")),
+                "sector": _as_str(_first(row, "sector", "Sector")),
+                "industry": _as_str(_first(row, "industry", "Industry")),
                 "price": _to_float(_first(row, "price", "Price")),
                 "change_pct": _clip_near_zero(_to_percent_float(_first(row, "change_pct", "change", "Change"))),
                 "mkt_cap": _fmt_market_cap(_first(row, "mkt_cap", "market_cap", "Market Cap")),

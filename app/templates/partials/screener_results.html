@@ -13,7 +13,7 @@
                     {% set cols = [
                     ("ticker", "Ticker"), ("company", "Company"), ("price", "Price"),
                     ("change_pct", "Chg%"), ("mkt_cap", "Mkt Cap"), ("pe", "P/E"),
-                    ("eps", "EPS"), ("volume", "Volume"),
+                    ("sector", "Sector"), ("industry", "Industry"), ("volume", "Volume"),
                     ] %}
                     {% for key, label in cols %}
                     <th hx-post="/hx/screener/results?sort_by={{ key }}&sort_dir={% if sort_by == key and sort_dir == 'asc' %}desc{% else %}asc{% endif %}&page={{ page }}"
@@ -42,7 +42,8 @@
                     </td>
                     <td>{{ r.mkt_cap if r.mkt_cap else "N/A" }}</td>
                     <td>{{ "%.1f"|format(r.pe) if r.pe is not none else "N/A" }}</td>
-                    <td>{{ "%.2f"|format(r.eps) if r.eps is not none else "N/A" }}</td>
+                    <td>{{ r.sector if r.sector else "N/A" }}</td>
+                    <td>{{ r.industry if r.industry else "N/A" }}</td>
                     <td>{{ "{:,.0f}".format(r.volume) if r.volume is not none else "N/A" }}</td>
                 </tr>
                 {% endfor %}

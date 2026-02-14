@@ -112,7 +112,7 @@ def _csv_safe(value: str) -> str:
 # ── Sorting / pagination ─────────────────────────────────────────────────
 
 _DEFAULT_PER_PAGE = 25
-_SORTABLE_COLS = {"ticker", "company", "price", "change_pct", "mkt_cap", "pe", "eps", "volume"}
+_SORTABLE_COLS = {"ticker", "company", "sector", "industry", "price", "change_pct", "mkt_cap", "pe", "volume"}
 
 
 def _sort_results(

@@ -300,7 +300,7 @@ def test_screen_stocks_ignores_cached_empty_and_refetches(monkeypatch):
         def screener_view(self, **kwargs):
             _ = kwargs
             return pd.DataFrame(
-                [{"Ticker": "AAPL", "Company": "Apple Inc", "Price": 200.0, "Change": "+1.2%", "Market Cap": "3.0T", "P/E": 30.0, "EPS (ttm)": 6.7, "Volume": 12345}]
+                [{"Ticker": "AAPL", "Company": "Apple Inc", "Sector": "Technology", "Industry": "Consumer Electronics", "Price": 200.0, "Change": "+1.2%", "Market Cap": "3.0T", "P/E": 30.0, "Volume": 12345}]
             )
 
     monkeypatch.setattr("app.services.data_service.Overview", _OverviewWithRows)
@@ -310,6 +310,8 @@ def test_screen_stocks_ignores_cached_empty_and_refetches(monkeypatch):
 
     assert rows
     assert rows[0]["ticker"] == "AAPL"
+    assert rows[0]["sector"] == "Technology"
+    assert rows[0]["industry"] == "Consumer Electronics"
 
 
 def test_screen_stocks_raises_provider_error_on_recoverable_failure(monkeypatch):
