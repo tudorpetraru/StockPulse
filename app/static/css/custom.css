@@ -964,11 +964,16 @@ body {
   flex-wrap: wrap;
 }
 
+.news-toolbar .btn-group {
+  margin: 0 !important;
+}
+
 .news-filter-btn {
   height: 40px;
   padding: 0 14px;
   display: inline-flex;
   align-items: center;
+  margin: 0 !important;
 }
 
 .news-search-form {
@@ -982,6 +987,7 @@ body {
 
 .news-search-form > * {
   flex: 0 0 auto;
+  margin: 0 !important;
 }
 
 .news-search-input {

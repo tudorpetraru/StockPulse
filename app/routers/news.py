@@ -7,7 +7,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from email.utils import parsedate_to_datetime
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
@@ -23,6 +24,12 @@ from app.services.data_service import DataService
 logger = logging.getLogger(__name__)
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
+_DEFAULT_TIMEFRAME = "24h"
+_TIMEFRAME_WINDOWS: dict[str, timedelta] = {
+    "24h": timedelta(hours=24),
+    "7d": timedelta(days=7),
+    "30d": timedelta(days=30),
+}
 
 
 def _get_portfolio_tickers(db: Session) -> list[str]:
@@ -45,6 +52,45 @@ def _parse_custom_input(raw: str) -> tuple[list[str] | None, str | None]:
     if parts and all(re.fullmatch(r"[A-Z][A-Z0-9.\-]{0,9}", part) for part in parts):
         return parts, None
     return None, value
+
+
+def _normalize_timeframe(raw: str | None) -> str:
+    value = (raw or "").strip().lower()
+    if value in _TIMEFRAME_WINDOWS:
+        return value
+    return _DEFAULT_TIMEFRAME
+
+
+def _parse_published_datetime(raw: str) -> datetime | None:
+    value = raw.strip()
+    if not value or value.upper() == "N/A":
+        return None
+
+    try:
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=UTC)
+        return dt.astimezone(UTC)
+    except ValueError:
+        pass
+
+    try:
+        dt = parsedate_to_datetime(value)
+        if dt is not None:
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=UTC)
+            return dt.astimezone(UTC)
+    except (TypeError, ValueError):
+        pass
+
+    for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%b %d, %Y", "%d %b %Y"):
+        try:
+            dt = datetime.strptime(value, fmt)
+            return dt.replace(hour=23, minute=59, second=59, tzinfo=UTC)
+        except ValueError:
+            continue
+
+    return None
 
 
 def _normalize_news_item(row: dict, default_ticker: str | None = None) -> dict:
@@ -71,10 +117,10 @@ def _normalize_news_item(row: dict, default_ticker: str | None = None) -> dict:
 
 def _published_sort_key(item: dict) -> datetime:
     raw = str(item.get("published") or "")
-    try:
-        return datetime.fromisoformat(raw.replace("Z", "+00:00")).astimezone(UTC)
-    except ValueError:
+    parsed = _parse_published_datetime(raw)
+    if parsed is None:
         return datetime.min.replace(tzinfo=UTC)
+    return parsed
 
 
 async def _fetch_news(
@@ -82,10 +128,14 @@ async def _fetch_news(
     ds: DataService,
     tickers: list[str] | None = None,
     search_query: str | None = None,
+    timeframe: str = _DEFAULT_TIMEFRAME,
     limit: int = 20,
     page: int = 1,
-) -> list[dict]:
-    target = max(limit * page, limit)
+) -> tuple[list[dict], bool]:
+    current_page = max(page, 1)
+    start = (current_page - 1) * limit
+    end = start + limit
+    target = end + 1
     items: list[dict] = []
 
     normalized_tickers = []
@@ -96,7 +146,9 @@ async def _fetch_news(
 
     if normalized_tickers:
         selected = normalized_tickers[:8]
-        per_symbol = max(2, min(6, target // max(len(selected), 1)))
+        symbol_count = max(len(selected), 1)
+        per_symbol = max(8, ((target + symbol_count - 1) // symbol_count) + 2)
+        per_symbol = min(per_symbol, max(25, target + 5))
         batches = await asyncio.gather(
             *(ds.get_news(symbol, limit=per_symbol) for symbol in selected),
             return_exceptions=True,
@@ -140,10 +192,19 @@ async def _fetch_news(
         if key not in dedup:
             dedup[key] = item
 
-    ordered = sorted(dedup.values(), key=_published_sort_key, reverse=True)
-    start = max(0, (page - 1) * limit)
-    end = start + limit
-    return ordered[start:end]
+    cutoff = datetime.now(UTC) - _TIMEFRAME_WINDOWS.get(timeframe, _TIMEFRAME_WINDOWS[_DEFAULT_TIMEFRAME])
+    filtered = []
+    for item in dedup.values():
+        published_dt = _parse_published_datetime(str(item.get("published") or ""))
+        if published_dt is None:
+            continue
+        if published_dt >= cutoff:
+            filtered.append(item)
+
+    ordered = sorted(filtered, key=_published_sort_key, reverse=True)
+    page_items = ordered[start:end]
+    has_more = len(ordered) > end
+    return page_items, has_more
 
 
 @router.get("/news", response_class=HTMLResponse)
@@ -151,9 +212,11 @@ async def news_page(
     request: Request,
     filter: str = Query("all"),
     q: str = Query("", max_length=500),
+    timeframe: str = Query(_DEFAULT_TIMEFRAME),
     db: Session = Depends(get_db),
     ds: DataService = Depends(get_data_service),
 ):
+    timeframe_key = _normalize_timeframe(timeframe)
     tickers = None
     search_query = None
     if filter == "portfolio":
@@ -163,15 +226,25 @@ async def news_page(
     elif filter == "custom" and q:
         tickers, search_query = _parse_custom_input(q)
 
-    news_items = await _fetch_news(request, ds, tickers=tickers, search_query=search_query, limit=20, page=1)
+    news_items, has_more = await _fetch_news(
+        request,
+        ds,
+        tickers=tickers,
+        search_query=search_query,
+        timeframe=timeframe_key,
+        limit=20,
+        page=1,
+    )
 
     return templates.TemplateResponse("news.html", {
         "request": request,
         "active_page": "news",
         "news_items": news_items,
         "active_filter": filter,
+        "active_timeframe": timeframe_key,
         "search_query": q,
         "page": 1,
+        "has_more": has_more,
     })
 
 
@@ -180,10 +253,12 @@ async def news_feed_partial(
     request: Request,
     filter: str = Query("all"),
     q: str = Query("", max_length=500),
+    timeframe: str = Query(_DEFAULT_TIMEFRAME),
     page: int = Query(1),
     db: Session = Depends(get_db),
     ds: DataService = Depends(get_data_service),
 ):
+    timeframe_key = _normalize_timeframe(timeframe)
     tickers = None
     search_query = None
     if filter == "portfolio":
@@ -193,11 +268,12 @@ async def news_feed_partial(
     elif filter == "custom" and q:
         tickers, search_query = _parse_custom_input(q)
 
-    news_items = await _fetch_news(
+    news_items, has_more = await _fetch_news(
         request,
         ds,
         tickers=tickers,
         search_query=search_query,
+        timeframe=timeframe_key,
         limit=20,
         page=max(page, 1),
     )
@@ -206,6 +282,8 @@ async def news_feed_partial(
         "request": request,
         "news_items": news_items,
         "active_filter": filter,
+        "active_timeframe": timeframe_key,
         "search_query": q,
         "page": page,
+        "has_more": has_more,
     })

@@ -8,13 +8,18 @@
 <!-- Filter Bar -->
 <div class="news-toolbar">
   <div class="btn-group">
-    <a href="/news?filter=all" class="btn news-filter-btn {{ 'btn-primary' if active_filter == 'all' }}">All</a>
-    <a href="/news?filter=portfolio" class="btn news-filter-btn {{ 'btn-primary' if active_filter == 'portfolio' }}">Portfolio</a>
-    <a href="/news?filter=watchlist" class="btn news-filter-btn {{ 'btn-primary' if active_filter == 'watchlist' }}">Watchlist</a>
-    <a href="/news?filter=custom" class="btn news-filter-btn {{ 'btn-primary' if active_filter == 'custom' }}">Custom</a>
+    <a href="/news?filter=all&timeframe={{ active_timeframe }}" class="btn news-filter-btn {{ 'btn-primary' if active_filter == 'all' }}">All</a>
+    <a href="/news?filter=portfolio&timeframe={{ active_timeframe }}" class="btn news-filter-btn {{ 'btn-primary' if active_filter == 'portfolio' }}">Portfolio</a>
+    <a href="/news?filter=watchlist&timeframe={{ active_timeframe }}" class="btn news-filter-btn {{ 'btn-primary' if active_filter == 'watchlist' }}">Watchlist</a>
+  </div>
+  <div class="btn-group">
+    <a href="/news?filter={{ active_filter }}&timeframe=24h" class="btn news-filter-btn {{ 'btn-primary' if active_timeframe == '24h' }}">Last 24h</a>
+    <a href="/news?filter={{ active_filter }}&timeframe=7d" class="btn news-filter-btn {{ 'btn-primary' if active_timeframe == '7d' }}">Last 7 days</a>
+    <a href="/news?filter={{ active_filter }}&timeframe=30d" class="btn news-filter-btn {{ 'btn-primary' if active_timeframe == '30d' }}">Last 30 days</a>
   </div>
   <form action="/news" method="get" class="news-search-form">
     <input type="hidden" name="filter" value="custom">
+    <input type="hidden" name="timeframe" value="{{ active_timeframe }}">
     <input class="sp-input news-search-input" name="q" placeholder="Search news... (e.g., AI semiconductor)" value="{{ search_query }}">
     <button type="submit" class="btn news-filter-btn news-search-btn">Search</button>
   </form>
@@ -22,7 +27,7 @@
 
 <!-- News Feed -->
 <div id="news-feed" style="max-width:800px;"
-     hx-get="/hx/news/feed?filter={{ active_filter }}&q={{ search_query }}"
+     hx-get="/hx/news/feed?filter={{ active_filter }}&timeframe={{ active_timeframe }}&q={{ search_query }}"
      hx-trigger="newsRefresh from:body"
      hx-swap="innerHTML">
   {% include "partials/news_feed.html" %}

@@ -19,14 +19,16 @@
     </div>
   </div>
   {% endfor %}
+  {% if has_more %}
   <div style="text-align:center; margin-top:var(--space-lg);">
     <button class="btn"
-            hx-get="/hx/news/feed?filter={{ active_filter }}&q={{ search_query }}&page={{ page + 1 }}"
+            hx-get="/hx/news/feed?filter={{ active_filter }}&timeframe={{ active_timeframe }}&q={{ search_query }}&page={{ page + 1 }}"
             hx-target="#news-feed"
             hx-swap="innerHTML">
       Load More News
     </button>
   </div>
+  {% endif %}
   {% else %}
   <div style="padding:24px; text-align:center;" class="text-muted">
     {% if active_filter == "portfolio" %}
